@@ -15,9 +15,8 @@ namespace ArenaElemental.Datos
     /// </summary>
     public static class ConfiguracionBD
     {
-        public static string Proveedor = "System.Data.SqlClient";
-
+        public static string Proveedor = "MySql.Data.MySqlClient";
         public static string CadenaConexion =
-            @"Data Source=.\SQLEXPRESS;Initial Catalog=ArenaElemental;Integrated Security=True;Connect Timeout=3";
+            "Server=localhost;Database=ArenaElemental;Uid=root;Pwd=TU_CLAVE;Charset=utf8;";
     }
 }

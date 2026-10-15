@@ -34,6 +34,13 @@ Idioma de trabajo con el usuario: **español**.
 - Pruebas de modelos (validaciones, triángulo, habilidades) y simulación de 3000 combates IA vs IA: 100% terminan, máx. 59 rondas, reparto ~54/46.
 - Los scripts SQL NO se han ejecutado contra un servidor real; el proyecto no se ha abierto en SharpDevelop 4.4 real (MSBuild se colgó en la PC original; csc compiló sin errores).
 
+## Estado de MySQL (local)
+- Servidor MySQL 8.0 instalado (servicio `MySQL80`, puerto 3306). Base creada: `arenaelemental` (12 personajes, 4 escenarios).
+- `ConfiguracionBD.cs` apunta a `Database=ArenaElemental` con `Pwd=TU_CLAVE`. La clave real NO va al repo: cada máquina la pone localmente.
+- Falta instalar MySQL Connector/NET y agregar la referencia `MySql.Data` al `.csproj`. No está en la PC.
+- Problema de versiones: `root` usa `caching_sha2_password`. Conector 6.9.x (.NET 4.0) no lo soporta; conector 8.x exige .NET 4.5.2+ (subir a v4.8). Decisión pendiente.
+- Decisión del usuario: dejar la conexión a MySQL para el final, cuando el proyecto esté listo.
+
 ## Pendiente / ideas
 - Probar scripts SQL y `RepositorioSql` contra un servidor real.
 - Probar el proyecto en SharpDevelop 4.4 / Visual Studio.
