@@ -1,0 +1,33 @@
+ARENA ELEMENTAL - Guía rápida
+=============================
+
+1) ABRIR EL PROYECTO
+   Abre ArenaElemental.sln con SharpDevelop 4.4 y presiona F5 (Ejecutar).
+   Destino: .NET Framework 4.0, C# 4.0 (sin características de C# 5/6).
+   Referencias necesarias (ya incluidas): System, System.Core, System.Data,
+   System.Drawing, System.Windows.Forms.
+
+2) BASE DE DATOS (opcional: sin ella el juego corre en "modo sin conexión")
+   SQL Server : ejecutar BaseDatos\ArenaElemental_SQLServer.sql en SSMS.
+   MySQL      : ejecutar BaseDatos\ArenaElemental_MySQL.sql en Workbench.
+   Luego editar Datos\ConfiguracionBD.cs (proveedor y cadena de conexión).
+   Para MySQL se necesita MySQL Connector/NET y agregar la referencia MySql.Data.
+
+3) ESTRUCTURA
+   Modelos\      Personaje (abstracta), CartaFuego/Agua/Tierra/Aire, Escenario, FabricaPersonajes
+   Motor\        Combate (turnos y relevos), EquipoCombate, AccionCombate, IaRival (CPU)
+   Datos\        IRepositorio, RepositorioSql (ADO.NET), RepositorioMemoria, CatalogoBase
+   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate, FrmEstadisticas, TarjetaPersonaje, Estilo
+   BaseDatos\    Scripts SQL (SQL Server y MySQL)
+
+4) REGLAS
+   - Triángulo: Agua > Fuego > Aire > Tierra > Agua (x1.5 ventaja, x0.5 desventaja).
+   - Equipo de 3; cada turno UNA acción: Atacar, Habilidad, Relevo o Descansar.
+   - No se puede relevar dos turnos seguidos. Si tu personaje cae, eliges relevo gratis.
+   - Escenario: +10% ATK a las cartas de su elemento.
+   - Ronda 30: muerte súbita (+15% de ATK por ronda) para evitar combates eternos.
+   - Los datos base de CatalogoBase.cs deben coincidir con los INSERT de los scripts SQL.
+
+5) NOTA SOBRE EL DISEÑADOR
+   Los formularios construyen sus controles por código (sin archivos .Designer.cs),
+   así que compilan y funcionan, pero no se editan arrastrando controles.

@@ -1,0 +1,21 @@
+# Compilación
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.exe
+*.dll
+*.pdb
+
+# IDEs
+.vs/
+*.suo
+*.user
+*.userprefs
+*.sdsuo
+*.csproj.user
+.idea/
+
+# Varios
+Thumbs.db
+*.log
