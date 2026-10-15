@@ -11,7 +11,7 @@ namespace ArenaElemental.Formularios
     {
         private Font fuenteResultado = new Font("Segoe UI", 10f, FontStyle.Bold);
 
-        public FrmEstadisticas(string nombreJugador, IList<EstadisticaPartida> partidas)
+        public FrmEstadisticas(string nombreJugador, List<EstadisticaPartida> partidas)
         {
             Estilo.AplicarFormulario(this, "Arena Elemental - Estadísticas", 924, 580);
 
@@ -85,7 +85,7 @@ namespace ArenaElemental.Formularios
             tarjeta.Controls.Add(nombre);
         }
 
-        private DataGridView CrearTabla(IList<EstadisticaPartida> partidas)
+        private DataGridView CrearTabla(List<EstadisticaPartida> partidas)
         {
             DataGridView dgv = new DataGridView();
             dgv.AutoGenerateColumns = false;

@@ -22,208 +22,147 @@ namespace ArenaElemental.Modelos
     }
 
     /// <summary>
-    /// Una habilidad especial de un personaje: nombre, costo de energía, recarga y efecto.
-    /// Cada personaje tiene dos: una de ataque y una de utilidad.
-    /// Se crean con los métodos estáticos (Golpe, Curacion, PotenciarAtaque...) para que sea fácil leerlas.
+    /// Una habilidad especial de un personaje. Cada personaje tiene dos:
+    /// una de ataque y una de utilidad.
+    ///
+    /// Todas las habilidades se crean con el mismo constructor; lo que cambia es el "efecto"
+    /// y los tres números que lo acompañan (potencia, extra y duración), que significan:
+    ///
+    ///   Efecto             potencia                   extra                    duración
+    ///   GolpePotenciado    factor de daño (2.0 = x2)  defensa que ignora (0-1) -
+    ///   DobleGolpe         factor de cada golpe       -                        energía que recupera
+    ///   GolpeVampirico     factor de daño             fracción del daño que cura -
+    ///   GolpeConRetroceso  factor de daño             fracción de su vida que pierde -
+    ///   Curar              fracción de vida que cura  -                        -
+    ///   CurarEquipo        fracción de vida que cura  -                        -
+    ///   PotenciarAtaque    aumento (0.3 = +30%)       -                        turnos
+    ///   PotenciarDefensa   -                          -                        turnos
+    ///   Reflejo            fracción que devuelve      -                        turnos
+    ///   RecargarEnergia    -                          -                        energía que recupera
     /// </summary>
     public class Habilidad
     {
-        private string nombre;
-        private string descripcion;
-        private EfectoHabilidad efecto;
-        private int costo;
-        private int cooldown;
-        private int cooldownActual;
-        private int usos;
-        private double potencia;   // factor de daño, porcentaje de curación, de ataque o de reflejo
-        private double extra;      // defensa ignorada, robo de vida o retroceso (entre 0 y 1)
-        private int duracion;      // turnos que dura el efecto (o energía que se recupera)
-
-        private Habilidad(string nombre, EfectoHabilidad efecto, int costo, int cooldown,
-                          double potencia, double extra, int duracion)
+        public Habilidad(string nombre, EfectoHabilidad efecto, int costo, int cooldown,
+                         double potencia, double extra, int duracion)
         {
-            if (string.IsNullOrWhiteSpace(nombre))
-                throw new ArgumentException("La habilidad debe tener nombre.", "nombre");
-            if (costo < 0) throw new ArgumentOutOfRangeException("costo", costo, "El costo no puede ser negativo.");
-            if (cooldown < 0) throw new ArgumentOutOfRangeException("cooldown", cooldown, "La recarga no puede ser negativa.");
-            if (potencia < 0) throw new ArgumentOutOfRangeException("potencia", potencia, "La potencia no puede ser negativa.");
-
-            this.nombre = nombre.Trim();
-            this.efecto = efecto;
-            this.costo = costo;
-            this.cooldown = cooldown;
-            this.potencia = potencia;
-            this.extra = extra;
-            this.duracion = duracion;
-            this.descripcion = ConstruirDescripcion();
+            Nombre = nombre;
+            Efecto = efecto;
+            Costo = costo;
+            Cooldown = cooldown;
+            Potencia = potencia;
+            Extra = extra;
+            Duracion = duracion;
+            CooldownActual = 0;
+            Usos = 0;
         }
 
-        // ---------- Formas de crear habilidades ----------
+        public string Nombre { get; private set; }
+        public EfectoHabilidad Efecto { get; private set; }
+        public int Costo { get; private set; }            // energía que gasta
+        public int Cooldown { get; private set; }         // turnos de recarga después de usarla
+        public double Potencia { get; private set; }
+        public double Extra { get; private set; }
+        public int Duracion { get; private set; }
 
-        /// <summary>Un golpe de daño x"factor" que ignora una parte de la defensa del enemigo (0 a 1).</summary>
-        public static Habilidad Golpe(string nombre, int costo, int cooldown, double factor, double defensaIgnorada)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.GolpePotenciado, costo, cooldown, factor, defensaIgnorada, 0);
-        }
+        /// <summary>Turnos que faltan para poder usarla de nuevo (0 = lista).</summary>
+        public int CooldownActual { get; set; }
 
-        /// <summary>Dos golpes de daño x"factorPorGolpe" cada uno; después recupera algo de energía.</summary>
-        public static Habilidad GolpeDoble(string nombre, int costo, int cooldown, double factorPorGolpe, int energiaRecuperada)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.DobleGolpe, costo, cooldown, factorPorGolpe, 0, energiaRecuperada);
-        }
+        /// <summary>Cuántas veces se ha usado.</summary>
+        public int Usos { get; private set; }
 
-        /// <summary>Un golpe que cura a quien lo usa una fracción (0 a 1) del daño causado.</summary>
-        public static Habilidad GolpeVampirico(string nombre, int costo, int cooldown, double factor, double robo)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.GolpeVampirico, costo, cooldown, factor, robo, 0);
-        }
-
-        /// <summary>Un golpe muy fuerte; quien lo usa pierde una fracción (0 a 1) de su vida máxima, sin llegar a caer.</summary>
-        public static Habilidad GolpeConRetroceso(string nombre, int costo, int cooldown, double factor, double retroceso)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.GolpeConRetroceso, costo, cooldown, factor, retroceso, 0);
-        }
-
-        /// <summary>Cura a un aliado esa fracción de la vida máxima de quien la usa, más 2 por punto de Empatía.</summary>
-        public static Habilidad Curacion(string nombre, int costo, int cooldown, double fraccionDeVida)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.Curar, costo, cooldown, fraccionDeVida, 0, 0);
-        }
-
-        /// <summary>Igual que Curacion pero cura a todos los aliados vivos.</summary>
-        public static Habilidad CuracionEquipo(string nombre, int costo, int cooldown, double fraccionDeVida)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.CurarEquipo, costo, cooldown, fraccionDeVida, 0, 0);
-        }
-
-        /// <summary>Sube el ataque ese porcentaje (0.3 = +30%) durante "turnos" turnos propios.</summary>
-        public static Habilidad PotenciarAtaque(string nombre, int costo, int cooldown, double porcentaje, int turnos)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.PotenciarAtaque, costo, cooldown, porcentaje, 0, turnos);
-        }
-
-        /// <summary>Sube la defensa durante "turnos" turnos del rival.</summary>
-        public static Habilidad PotenciarDefensa(string nombre, int costo, int cooldown, int turnos)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.PotenciarDefensa, costo, cooldown, 0, 0, turnos);
-        }
-
-        /// <summary>Devuelve ese porcentaje (0.5 = 50%) del daño recibido durante "turnos" turnos del rival.</summary>
-        public static Habilidad Reflejo(string nombre, int costo, int cooldown, double porcentaje, int turnos)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.Reflejo, costo, cooldown, porcentaje, 0, turnos);
-        }
-
-        /// <summary>Recupera energía.</summary>
-        public static Habilidad RecargaEnergia(string nombre, int costo, int cooldown, int energia)
-        {
-            return new Habilidad(nombre, EfectoHabilidad.RecargarEnergia, costo, cooldown, 0, 0, energia);
-        }
-
-        // ---------- Datos de la habilidad ----------
-
-        public string Nombre { get { return nombre; } }
-        public string Descripcion { get { return descripcion; } }
-        public EfectoHabilidad Efecto { get { return efecto; } }
-        public int Costo { get { return costo; } }
-        public int Cooldown { get { return cooldown; } }
-        public double Potencia { get { return potencia; } }
-        public double Extra { get { return extra; } }
-        public int Duracion { get { return duracion; } }
-        public int Usos { get { return usos; } }
-
-        /// <summary>Turnos que faltan para poder usarla de nuevo, siempre entre 0 y Cooldown.</summary>
-        public int CooldownActual
-        {
-            get { return cooldownActual; }
-            set
-            {
-                if (value < 0) value = 0;
-                if (value > cooldown) value = cooldown;
-                cooldownActual = value;
-            }
-        }
-
-        /// <summary>True si se usa contra el enemigo (ataque); false si es de utilidad.</summary>
+        /// <summary>True si es una habilidad de ataque (se usa contra el enemigo).</summary>
         public bool EsOfensiva
         {
-            get { return efecto <= EfectoHabilidad.GolpeConRetroceso; }
-        }
-
-        /// <summary>True si el jugador debe elegir a qué aliado se aplica.</summary>
-        public bool RequiereAliado
-        {
-            get { return efecto == EfectoHabilidad.Curar; }
-        }
-
-        /// <summary>Tipo para mostrar en pantalla.</summary>
-        public string Tipo
-        {
-            get { return EsOfensiva ? "Ataque" : "Utilidad"; }
-        }
-
-        // ---------- Uso ----------
-
-        /// <summary>Activa la recarga y suma un uso. La energía la descuenta el personaje.</summary>
-        internal void Registrar()
-        {
-            cooldownActual = cooldown;
-            usos++;
-        }
-
-        /// <summary>Se llama al iniciar el turno del personaje: baja la recarga en 1.</summary>
-        internal void AvanzarTurno()
-        {
-            if (cooldownActual > 0) cooldownActual--;
-        }
-
-        /// <summary>Copia de la habilidad lista para usar (sin recarga ni usos).</summary>
-        public Habilidad Clonar()
-        {
-            Habilidad copia = (Habilidad)MemberwiseClone();
-            copia.cooldownActual = 0;
-            copia.usos = 0;
-            return copia;
-        }
-
-        // ---------- Texto ----------
-
-        private string ConstruirDescripcion()
-        {
-            string x = potencia.ToString("0.0#", CultureInfo.InvariantCulture);
-            switch (efecto)
+            get
             {
-                case EfectoHabilidad.GolpePotenciado:
-                    return "Golpe x" + x + (extra > 0 ? " que ignora el " + Porcentaje(extra) + " de la defensa." : ".");
-                case EfectoHabilidad.DobleGolpe:
-                    return "Dos golpes de x" + x + " cada uno" + (duracion > 0 ? " y recupera " + duracion + " de energía." : ".");
-                case EfectoHabilidad.GolpeVampirico:
-                    return "Golpe x" + x + " que cura a quien lo usa el " + Porcentaje(extra) + " del daño causado.";
-                case EfectoHabilidad.GolpeConRetroceso:
-                    return "Golpe x" + x + ". Quien lo usa pierde el " + Porcentaje(extra) + " de su vida máxima (nunca cae por esto).";
-                case EfectoHabilidad.Curar:
-                    return "Cura a un aliado el " + Porcentaje(potencia) + " de la vida máxima de quien la usa + 2 por Empatía.";
-                case EfectoHabilidad.CurarEquipo:
-                    return "Cura a todo el equipo el " + Porcentaje(potencia) + " de la vida máxima de quien la usa + 2 por Empatía.";
-                case EfectoHabilidad.PotenciarAtaque:
-                    return "Sube el ataque +" + Porcentaje(potencia) + " durante " + duracion + " turnos propios.";
-                case EfectoHabilidad.PotenciarDefensa:
-                    return "Sube la defensa (mitad de su DEF + mitad de su Empatía) durante " + duracion + " turnos del rival.";
-                case EfectoHabilidad.Reflejo:
-                    return "Devuelve el " + Porcentaje(potencia) + " del daño que reciba durante " + duracion + " turnos del rival.";
-                default:
-                    return "Recupera " + duracion + " de energía.";
+                return Efecto == EfectoHabilidad.GolpePotenciado
+                    || Efecto == EfectoHabilidad.DobleGolpe
+                    || Efecto == EfectoHabilidad.GolpeVampirico
+                    || Efecto == EfectoHabilidad.GolpeConRetroceso;
             }
         }
 
-        private static string Porcentaje(double fraccion)
+        /// <summary>True si el jugador tiene que elegir a cuál aliado curar.</summary>
+        public bool RequiereAliado
+        {
+            get { return Efecto == EfectoHabilidad.Curar; }
+        }
+
+        /// <summary>El tipo en texto, para mostrarlo en pantalla.</summary>
+        public string Tipo
+        {
+            get
+            {
+                if (EsOfensiva) return "Ataque";
+                return "Utilidad";
+            }
+        }
+
+        /// <summary>Se llama cuando el personaje usa la habilidad: empieza la recarga y suma un uso.</summary>
+        public void Usar()
+        {
+            CooldownActual = Cooldown;
+            Usos++;
+        }
+
+        /// <summary>Se llama al iniciar el turno del personaje: la recarga baja 1.</summary>
+        public void PasarTurno()
+        {
+            if (CooldownActual > 0) CooldownActual--;
+        }
+
+        /// <summary>Una copia nueva de la habilidad, lista para usar (sin recarga y sin usos).</summary>
+        public Habilidad Clonar()
+        {
+            return new Habilidad(Nombre, Efecto, Costo, Cooldown, Potencia, Extra, Duracion);
+        }
+
+        /// <summary>Explica en una frase lo que hace la habilidad (se muestra en los tooltips).</summary>
+        public string Descripcion
+        {
+            get
+            {
+                // Se usa la cultura invariante para que el decimal salga con punto (2.0) en cualquier PC.
+                string x = Potencia.ToString("0.0#", CultureInfo.InvariantCulture);
+
+                if (Efecto == EfectoHabilidad.GolpePotenciado)
+                {
+                    if (Extra > 0) return "Golpe x" + x + " que ignora el " + Porcentaje(Extra) + " de la defensa.";
+                    return "Golpe x" + x + ".";
+                }
+                if (Efecto == EfectoHabilidad.DobleGolpe)
+                {
+                    if (Duracion > 0) return "Dos golpes de x" + x + " cada uno y recupera " + Duracion + " de energía.";
+                    return "Dos golpes de x" + x + " cada uno.";
+                }
+                if (Efecto == EfectoHabilidad.GolpeVampirico)
+                    return "Golpe x" + x + " que cura a quien lo usa el " + Porcentaje(Extra) + " del daño causado.";
+                if (Efecto == EfectoHabilidad.GolpeConRetroceso)
+                    return "Golpe x" + x + ". Quien lo usa pierde el " + Porcentaje(Extra) + " de su vida máxima (nunca cae por esto).";
+                if (Efecto == EfectoHabilidad.Curar)
+                    return "Cura a un aliado el " + Porcentaje(Potencia) + " de la vida máxima de quien la usa + 2 por Empatía.";
+                if (Efecto == EfectoHabilidad.CurarEquipo)
+                    return "Cura a todo el equipo el " + Porcentaje(Potencia) + " de la vida máxima de quien la usa + 2 por Empatía.";
+                if (Efecto == EfectoHabilidad.PotenciarAtaque)
+                    return "Sube el ataque +" + Porcentaje(Potencia) + " durante " + Duracion + " turnos propios.";
+                if (Efecto == EfectoHabilidad.PotenciarDefensa)
+                    return "Sube la defensa (mitad de su DEF + mitad de su Empatía) durante " + Duracion + " turnos del rival.";
+                if (Efecto == EfectoHabilidad.Reflejo)
+                    return "Devuelve el " + Porcentaje(Potencia) + " del daño que reciba durante " + Duracion + " turnos del rival.";
+
+                return "Recupera " + Duracion + " de energía.";   // RecargarEnergia
+            }
+        }
+
+        /// <summary>Convierte una fracción en porcentaje: 0.3 pasa a "30%".</summary>
+        private string Porcentaje(double fraccion)
         {
             return (int)Math.Round(fraccion * 100) + "%";
         }
 
         public override string ToString()
         {
-            return nombre + " (" + Tipo + ", " + costo + " ENG, recarga " + cooldown + ")";
+            return Nombre + " (" + Tipo + ", " + Costo + " ENG, recarga " + Cooldown + ")";
         }
     }
 }

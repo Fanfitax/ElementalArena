@@ -24,6 +24,7 @@ ARENA ELEMENTAL - Guía rápida
                  Ver Imagenes\LEEME.txt.
    Sonidos\      ataque.wav, habilidad.wav, relevo.wav y terremoto.wav. Si falta alguno, el juego sigue sin ese sonido.
    Herramientas\ Codigo que dibujo el tablero y genero los sonidos (no se compila con el proyecto)
+   GUIA_DEFENSA.md  Guia para estudiar y defender el proyecto (explicacion del codigo y preguntas probables)
    BaseDatos\    Scripts SQL guardados para más adelante (no se usan por ahora)
 
 3) ESTRUCTURAS DE DATOS (de la guía)

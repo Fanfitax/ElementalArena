@@ -11,7 +11,7 @@ Idioma de trabajo con el usuario: **español**.
 
 ## Arquitectura (namespace `ArenaElemental.*`)
 - `Modelos\` — `Personaje` (abstracta) + `CartaFuego/Agua/Tierra/Aire` (solo cambian el triángulo elemental), `Habilidad` (+ enum `EfectoHabilidad`), `Escenario`.
-  Stats base negativos lanzan `ArgumentOutOfRangeException`; HP/ENG/recargas se limitan (clamp) a [0, máx].
+  Backend escrito en estilo sencillo (ver `GUIA_DEFENSA.md`): sin fábricas estáticas ni `internal`; una sola clase `Habilidad` con un constructor; validaciones mínimas (stats negativos, nombre vacío, equipo de 3 sin repetidos); HP/ENG se limitan (clamp) a [0, máx] en el setter. Verificado contra la versión anterior con una "huella" de 500 combates (salida idéntica).
   Cada personaje tiene **2 habilidades**: `HabilidadAtaque` (número 0) y `HabilidadUtilidad` (número 1). Los efectos temporales (potenciador de ATK, DEF extra, reflejo) viven en `Personaje` y se limpian al salir del campo.
 - `Motor\` — `Combate` (turnos/relevos, sin UI), `EquipoCombate`, `AccionCombate`, `IaRival` (CPU), `RedLan` + `ConfigPartida` (modo LAN con `TcpListener`/`TcpClient`, mensajes de texto, sin hilos).
   Estructuras de datos de la guía: **`Queue<Personaje>`** = banca de relevos (en `EquipoCombate`) y **`Stack<string>`** = historial de jugadas (en `Combate`).
@@ -44,7 +44,7 @@ Código de estudiante de 2º semestre, ordenado y fácil de explicar en una defe
 - No se puede relevar dos turnos seguidos; si cae el activo, entra automáticamente el siguiente de la cola (gratis). El caído no vuelve a la cola.
 - **Terremoto** (evento aleatorio, en `Combate`; vínculo con Cálculo 1): al empezar cada ronda hay 25% de probabilidad (`ProbabilidadTerremoto`, con `Random` sembrado por `Semilla`). Daño a cada uno de los dos personajes en el campo = `Min(f'(t), 20% de su HP máx.)` con `f(t) = 2t² + 5t`, `f'(t) = 4t + 5` y t = número de ronda (`FuncionTerremoto`, `DerivadaTerremoto`, `DanoDelTerremoto`, tope `LimiteTerremotoPct`). Nunca baja de 1 HP, así que no mata. La fórmula y el cálculo de cada personaje quedan en la pila del historial.
 - Escenario: +10% ATK al elemento afín. Ronda 30: muerte súbita (+15% ATK por ronda) para que todo combate termine.
-- Habilidades (ataque / utilidad, las define `CatalogoBase` con `Habilidad.Golpe/GolpeDoble/GolpeVampirico/GolpeConRetroceso/Curacion/CuracionEquipo/PotenciarAtaque/PotenciarDefensa/Reflejo/RecargaEnergia`):
+- Habilidades (ataque / utilidad, las define `CatalogoBase` con `new Habilidad(nombre, efecto, costo, recarga, potencia, extra, duración)` y el enum `EfectoHabilidad`: GolpePotenciado/DobleGolpe/GolpeVampirico/GolpeConRetroceso/Curar/CurarEquipo/PotenciarAtaque/PotenciarDefensa/Reflejo/RecargarEnergia):
   Fuego (daño puro, utilidad = potenciar ATK): Pyra Llamarada / Aura Ígnea · Ignar Tajo Carmesí / Grito de Guerra · Cenizo Explosión de Brasas (retroceso) / Combustión Interna.
   Agua (apoyo, utilidad = curar): Marina Chorro a Presión / Marea Curativa · Tidal Oleada Voraz (roba vida) / Oleaje Reparador · Cascada Torrente (doble golpe) / Lluvia Sanadora (cura a todo el equipo).
   Tierra (tanques, utilidad = defensa o reflejo): Gaia Raíces Punzantes / Muro de Roca · Gólem Puño Sísmico / Coraza Espinosa (devuelve 50% del daño) · Sílex Esquirla Cortante / Filo Reflectante (devuelve 60%).

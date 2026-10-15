@@ -3,44 +3,46 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using ArenaElemental.Datos;
 using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Motor
 {
     /// <summary>
-    /// Conexión entre dos PCs de la misma red local (LAN) con sockets nativos: un jugador es el ANFITRIÓN
-    /// (usa TcpListener y espera) y el otro es el INVITADO (usa TcpClient y se conecta por IP y puerto).
+    /// Conecta dos PCs de la misma red (LAN) con sockets de .NET:
+    ///  - El ANFITRIÓN usa un TcpListener: abre un puerto y espera.
+    ///  - El INVITADO usa un TcpClient: se conecta a la IP y al puerto del anfitrión.
     ///
-    /// Los mensajes son líneas de texto (terminan en salto de línea). Todo se consulta desde un Timer del
-    /// formulario (no hay hilos): "HayClienteEsperando", "ConexionTerminada" y "LeerTexto" nunca se quedan
-    /// esperando; si no hay nada devuelven false o null.
+    /// Los mensajes son líneas de texto (cada una termina en un salto de línea). Para no usar hilos,
+    /// los formularios le preguntan a esta clase cada cierto tiempo con un Timer
+    /// ("¿ya se conectó alguien?", "¿llegó algo?"). Ninguna de esas preguntas se queda esperando:
+    /// si no hay nada devuelven false o null.
     ///
     /// Mensajes que se envían:
-    ///   CONFIG|nombreEquipo|id,id,id|escenario|semilla   (el anfitrión: equipo, escenario y semilla del azar)
-    ///   CONFIG|nombreEquipo|id,id,id                     (el invitado: su equipo)
-    ///   ACCION|tipo|numeroHabilidad|indice               (una jugada del combate)
-    ///   RENDIRSE                                         (el jugador abandona)
-    /// Los dos combates arrancan idénticos (mismos equipos, escenario y semilla) y reciben las mismas jugadas
-    /// en el mismo orden, así que siempre quedan iguales en los dos PCs.
+    ///   CONFIG|nombreEquipo|id,id,id|escenario|semilla   el anfitrión anuncia su equipo, el escenario y la semilla
+    ///   CONFIG|nombreEquipo|id,id,id                     el invitado anuncia su equipo
+    ///   ACCION|tipo|numeroHabilidad|indice               una jugada del combate
+    ///   RENDIRSE                                         el jugador abandona
+    ///
+    /// Los dos PCs crean el mismo combate (mismos equipos, escenario y semilla) y se pasan las jugadas,
+    /// así que los dos combates siempre quedan iguales.
     /// </summary>
     public class RedLan
     {
         public const int PuertoPorDefecto = 8888;
 
-        private TcpListener escuchador;       // solo el anfitrión
-        private TcpClient cliente;            // la conexión con el otro PC
-        private IAsyncResult conexionEnCurso; // solo el invitado, mientras se conecta
-        private NetworkStream flujo;
-        private List<byte> recibido = new List<byte>();   // bytes que ya llegaron y todavía no forman una línea completa
+        private TcpListener escuchador;        // solo lo usa el anfitrión
+        private TcpClient cliente;             // la conexión con el otro PC
+        private IAsyncResult conexionEnCurso;  // solo lo usa el invitado mientras se conecta
+        private NetworkStream flujo;           // por aquí se envían y reciben los bytes
+        private string recibido = "";          // texto que llegó y todavía no es una línea completa
         private bool desconectado;
 
         public bool EsAnfitrion { get; private set; }
 
-        /// <summary>Explica en texto lo último que falló (puerto ocupado, IP inválida, etc.).</summary>
+        /// <summary>El último error, en texto, para mostrárselo al usuario.</summary>
         public string UltimoError { get; private set; }
 
-        /// <summary>True si la conexión con el otro PC se perdió o se cerró.</summary>
+        /// <summary>True si se perdió o se cerró la conexión.</summary>
         public bool Desconectado
         {
             get { return desconectado; }
@@ -48,7 +50,7 @@ namespace ArenaElemental.Motor
 
         // ---------- Anfitrión ----------
 
-        /// <summary>Empieza a esperar a que otro PC se conecte a este puerto. Devuelve false si no se pudo (puerto ocupado).</summary>
+        /// <summary>Abre el puerto y empieza a esperar. Devuelve false si no se pudo (por ejemplo, puerto ocupado).</summary>
         public bool IniciarAnfitrion(int puerto)
         {
             try
@@ -66,10 +68,12 @@ namespace ArenaElemental.Motor
             }
         }
 
-        /// <summary>True cuando otro PC ya se conectó (en ese momento se acepta la conexión).</summary>
+        /// <summary>Devuelve true cuando otro PC ya se conectó (en ese momento acepta la conexión).</summary>
         public bool HayClienteEsperando()
         {
-            if (escuchador == null || !escuchador.Pending()) return false;
+            if (escuchador == null) return false;
+            if (!escuchador.Pending()) return false;
+
             try
             {
                 cliente = escuchador.AcceptTcpClient();
@@ -101,7 +105,7 @@ namespace ArenaElemental.Motor
             {
                 EsAnfitrion = false;
                 cliente = new TcpClient();
-                conexionEnCurso = cliente.BeginConnect(direccion, puerto, null, null);
+                conexionEnCurso = cliente.BeginConnect(direccion, puerto, null, null);   // conecta sin congelar la ventana
                 return true;
             }
             catch (Exception ex)
@@ -113,12 +117,14 @@ namespace ArenaElemental.Motor
         }
 
         /// <summary>
-        /// Se llama una y otra vez desde un Timer mientras el invitado se conecta.
-        /// Devuelve true cuando ya está conectado. Si falló, Desconectado queda en true y UltimoError dice por qué.
+        /// El Timer del formulario la llama mientras el invitado se conecta.
+        /// Devuelve true cuando ya quedó conectado. Si falló, Desconectado queda en true.
         /// </summary>
         public bool ConexionTerminada()
         {
-            if (conexionEnCurso == null || !conexionEnCurso.IsCompleted) return false;
+            if (conexionEnCurso == null) return false;
+            if (!conexionEnCurso.IsCompleted) return false;
+
             try
             {
                 cliente.EndConnect(conexionEnCurso);
@@ -141,6 +147,7 @@ namespace ArenaElemental.Motor
         public void EnviarTexto(string linea)
         {
             if (flujo == null || desconectado) return;
+
             try
             {
                 byte[] datos = Encoding.UTF8.GetBytes(linea + "\n");
@@ -153,7 +160,7 @@ namespace ArenaElemental.Motor
         }
 
         /// <summary>
-        /// Devuelve la siguiente línea recibida o null si todavía no llegó una completa (no espera).
+        /// Devuelve la siguiente línea que llegó, o null si todavía no llegó una completa (no espera).
         /// Si el otro PC cerró la conexión, Desconectado pasa a true.
         /// </summary>
         public string LeerTexto()
@@ -162,32 +169,31 @@ namespace ArenaElemental.Motor
 
             try
             {
-                // 1) Se pasa a "recibido" lo que haya llegado por la red.
+                // 1) Pasar a "recibido" todo lo que haya llegado.
                 while (cliente.Available > 0)
                 {
                     byte[] datos = new byte[cliente.Available];
                     int leidos = flujo.Read(datos, 0, datos.Length);
-                    for (int i = 0; i < leidos; i++)
-                        recibido.Add(datos[i]);
+                    recibido = recibido + Encoding.UTF8.GetString(datos, 0, leidos);
                 }
 
-                // 2) Si ya hay una línea completa (termina en el byte 10 = salto de línea), se entrega.
-                int fin = recibido.IndexOf(10);
+                // 2) Si hay una línea completa, entregarla.
+                int fin = recibido.IndexOf('\n');
                 if (fin >= 0)
                 {
-                    byte[] linea = recibido.GetRange(0, fin).ToArray();
-                    recibido.RemoveRange(0, fin + 1);
-                    return Encoding.UTF8.GetString(linea).Trim();
+                    string linea = recibido.Substring(0, fin).Trim();
+                    recibido = recibido.Substring(fin + 1);
+                    return linea;
                 }
 
                 // 3) Una línea sin fin tan larga no es de este juego: se corta la conexión.
-                if (recibido.Count > 4096)
+                if (recibido.Length > 4096)
                 {
                     desconectado = true;
                     return null;
                 }
 
-                // 4) Sin datos nuevos: si el otro PC cerró la conexión, se detecta aquí.
+                // 4) Sin datos nuevos: si el otro PC cerró la conexión, se nota aquí.
                 if (cliente.Client.Poll(0, SelectMode.SelectRead) && cliente.Available == 0)
                     desconectado = true;
             }
@@ -198,7 +204,7 @@ namespace ArenaElemental.Motor
             return null;
         }
 
-        /// <summary>Cierra todo (se puede llamar varias veces).</summary>
+        /// <summary>Cierra la conexión (se puede llamar varias veces).</summary>
         public void Cerrar()
         {
             try
@@ -209,7 +215,7 @@ namespace ArenaElemental.Motor
             }
             catch (Exception)
             {
-                // al cerrar no importa si algo ya estaba cerrado
+                // Si algo ya estaba cerrado no importa.
             }
             escuchador = null;
             flujo = null;
@@ -217,8 +223,9 @@ namespace ArenaElemental.Motor
             desconectado = true;
         }
 
-        // ---------- Jugadas ----------
+        // ---------- Mensajes del combate ----------
 
+        /// <summary>Envía la jugada al otro PC.</summary>
         public void EnviarAccion(AccionCombate accion)
         {
             EnviarTexto("ACCION|" + accion.Tipo + "|" + accion.NumeroHabilidad + "|" + accion.Indice);
@@ -229,19 +236,23 @@ namespace ArenaElemental.Motor
             EnviarTexto("RENDIRSE");
         }
 
-        /// <summary>Convierte un mensaje "ACCION|..." en la jugada. Devuelve null si el texto no es una jugada válida.</summary>
+        /// <summary>Convierte un mensaje "ACCION|..." en una jugada. Devuelve null si el texto no sirve.</summary>
         public static AccionCombate TextoAAccion(string mensaje)
         {
             string[] partes = mensaje.Split('|');
             if (partes.Length != 4 || partes[0] != "ACCION") return null;
 
-            int numero, indice;
-            if (!int.TryParse(partes[2], out numero) || !int.TryParse(partes[3], out indice)) return null;
+            int numero;
+            int indice;
+            if (!int.TryParse(partes[2], out numero)) return null;
+            if (!int.TryParse(partes[3], out indice)) return null;
 
-            if (partes[1] == "Atacar") return AccionCombate.Atacar();
-            if (partes[1] == "Relevo") return AccionCombate.Relevar();
-            if (partes[1] == "Pasar") return AccionCombate.Pasar();
-            if (partes[1] == "Habilidad")
+            string tipo = partes[1];
+            if (tipo == "Atacar") return AccionCombate.Atacar();
+            if (tipo == "Relevo") return AccionCombate.Relevar();
+            if (tipo == "Pasar") return AccionCombate.Pasar();
+
+            if (tipo == "Habilidad")
             {
                 if (numero < 0 || numero >= Personaje.CantidadHabilidades) return null;
                 if (indice >= 0) return AccionCombate.HabilidadSobreAliado(numero, indice);
@@ -250,9 +261,7 @@ namespace ArenaElemental.Motor
             return null;
         }
 
-        // ---------- Ayudas ----------
-
-        /// <summary>Las direcciones IPv4 de este PC (para decirle al otro jugador a cuál conectarse).</summary>
+        /// <summary>Las direcciones IPv4 de este PC, para decirle al otro jugador a cuál conectarse.</summary>
         public static List<string> DireccionesLocales()
         {
             List<string> direcciones = new List<string>();
@@ -267,69 +276,9 @@ namespace ArenaElemental.Motor
             }
             catch (Exception)
             {
-                // sin red no hay direcciones que mostrar
+                // Sin red no hay direcciones que mostrar.
             }
             return direcciones;
-        }
-    }
-
-    /// <summary>
-    /// Lo que cada jugador anuncia antes del combate: nombre de su equipo y los 3 personajes (como números de
-    /// la lista de CatalogoBase). El anfitrión además manda el escenario y la semilla del azar.
-    /// </summary>
-    public class ConfigPartida
-    {
-        public string NombreEquipo;
-        public List<Personaje> Equipo = new List<Personaje>();
-        public int IndiceEscenario = -1;   // solo viene del anfitrión
-        public int Semilla;                // solo viene del anfitrión
-
-        /// <summary>Arma el mensaje CONFIG para enviarlo por la red.</summary>
-        public string ATexto()
-        {
-            StringBuilder ids = new StringBuilder();
-            foreach (Personaje p in Equipo)
-            {
-                if (ids.Length > 0) ids.Append(",");
-                ids.Append(CatalogoBase.Personajes.IndexOf(p));
-            }
-
-            // Los separadores "|" y los saltos de línea no pueden ir dentro del nombre.
-            string nombre = NombreEquipo.Replace('|', '/').Replace('\n', ' ').Replace('\r', ' ');
-            string texto = "CONFIG|" + nombre + "|" + ids;
-            if (IndiceEscenario >= 0) texto += "|" + IndiceEscenario + "|" + Semilla;
-            return texto;
-        }
-
-        /// <summary>Lee un mensaje CONFIG. Devuelve null si el texto está mal formado o pide personajes que no existen.</summary>
-        public static ConfigPartida DeTexto(string mensaje)
-        {
-            string[] partes = mensaje.Split('|');
-            if (partes[0] != "CONFIG" || (partes.Length != 3 && partes.Length != 5)) return null;
-            if (partes[1].Trim().Length == 0) return null;
-
-            ConfigPartida config = new ConfigPartida();
-            config.NombreEquipo = partes[1].Trim();
-
-            string[] ids = partes[2].Split(',');
-            if (ids.Length != EquipoCombate.TamanoEquipo) return null;
-            foreach (string id in ids)
-            {
-                int numero;
-                if (!int.TryParse(id, out numero)) return null;
-                if (numero < 0 || numero >= CatalogoBase.Personajes.Count) return null;
-                Personaje p = CatalogoBase.Personajes[numero];
-                if (config.Equipo.Contains(p)) return null;   // repetido
-                config.Equipo.Add(p);
-            }
-
-            if (partes.Length == 5)
-            {
-                if (!int.TryParse(partes[3], out config.IndiceEscenario)) return null;
-                if (config.IndiceEscenario < 0 || config.IndiceEscenario >= CatalogoBase.Escenarios.Count) return null;
-                if (!int.TryParse(partes[4], out config.Semilla)) return null;
-            }
-            return config;
         }
     }
 }

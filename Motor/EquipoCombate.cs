@@ -5,21 +5,24 @@ using ArenaElemental.Modelos;
 namespace ArenaElemental.Motor
 {
     /// <summary>
-    /// Equipo de 3 personajes. Hay un personaje activo (en el campo) y los otros dos
-    /// esperan en una COLA (Queue). Cuando se hace un relevo entra el primero de la cola
-    /// y el que sale se forma al final.
+    /// Un equipo de 3 personajes. Uno está en el campo (el "activo") y los otros dos esperan
+    /// en una COLA (Queue): el primero que entró a la cola es el primero que sale a pelear.
+    /// Cuando se hace un relevo, entra el primero de la cola y el que sale se forma al final.
     /// </summary>
     public class EquipoCombate
     {
         public const int TamanoEquipo = 3;
 
         private List<Personaje> miembros = new List<Personaje>();   // los 3 personajes (para mostrarlos)
-        private Queue<Personaje> banca = new Queue<Personaje>();    // COLA de relevos
-        private Personaje activo;
+        private Queue<Personaje> banca = new Queue<Personaje>();    // la COLA de relevos
+        private Personaje activo;                                   // el que está peleando
         private int danoInfligido;
-        private bool ultimaAccionFueRelevo;
+        private bool relevoBloqueado;
 
-        /// <summary>Crea el equipo con COPIAS de los personajes (así el catálogo original no se modifica).</summary>
+        /// <summary>
+        /// Crea el equipo con COPIAS de los personajes (así los datos originales del catálogo no se modifican).
+        /// El primero de la lista sale al campo y los otros dos se forman en la cola, en ese orden.
+        /// </summary>
         public EquipoCombate(string nombre, List<Personaje> personajes, bool esJugador)
         {
             if (nombre == null || nombre.Trim().Length == 0)
@@ -27,20 +30,22 @@ namespace ArenaElemental.Motor
             if (personajes == null || personajes.Count != TamanoEquipo)
                 throw new ArgumentException("El equipo debe tener exactamente " + TamanoEquipo + " personajes.");
 
-            foreach (Personaje p in personajes)
+            // No se puede repetir un personaje.
+            for (int i = 0; i < personajes.Count; i++)
             {
-                foreach (Personaje existente in miembros)
+                for (int j = i + 1; j < personajes.Count; j++)
                 {
-                    if (existente.Id == p.Id)
-                        throw new ArgumentException("El personaje " + p.Nombre + " está repetido en el equipo.");
+                    if (personajes[i].Id == personajes[j].Id)
+                        throw new ArgumentException("El personaje " + personajes[i].Nombre + " está repetido en el equipo.");
                 }
-                miembros.Add(p.CrearCopia());
             }
+
+            foreach (Personaje p in personajes)
+                miembros.Add(p.CrearCopia());
 
             Nombre = nombre.Trim();
             EsJugador = esJugador;
 
-            // El primero sale al campo; los demás se forman en la cola en el mismo orden.
             activo = miembros[0];
             for (int i = 1; i < miembros.Count; i++)
                 banca.Enqueue(miembros[i]);
@@ -49,27 +54,32 @@ namespace ArenaElemental.Motor
         public string Nombre { get; private set; }
         public bool EsJugador { get; private set; }
 
+        /// <summary>Los 3 personajes del equipo (vivos o derrotados).</summary>
         public List<Personaje> Miembros
         {
             get { return miembros; }
         }
 
-        /// <summary>Personaje que está peleando ahora.</summary>
+        /// <summary>El personaje que está peleando ahora.</summary>
         public Personaje Activo
         {
             get { return activo; }
         }
 
-        /// <summary>Cantidad de personajes esperando en la cola.</summary>
+        /// <summary>Cuántos personajes esperan en la cola.</summary>
         public int CantidadBanca
         {
             get { return banca.Count; }
         }
 
-        /// <summary>El personaje que entraría si se hace un relevo (Peek de la cola). Null si no hay nadie.</summary>
+        /// <summary>El que entraría en el próximo relevo (Peek de la cola). Es null si la cola está vacía.</summary>
         public Personaje ProximoRelevo
         {
-            get { return banca.Count > 0 ? banca.Peek() : null; }
+            get
+            {
+                if (banca.Count == 0) return null;
+                return banca.Peek();
+            }
         }
 
         /// <summary>Copia del contenido de la cola, en orden, para mostrarla en pantalla.</summary>
@@ -78,16 +88,22 @@ namespace ArenaElemental.Motor
             return banca.ToArray();
         }
 
+        public bool HayRelevoDisponible
+        {
+            get { return banca.Count > 0; }
+        }
+
+        /// <summary>Cuántos personajes del equipo siguen vivos.</summary>
         public int Vivos
         {
             get
             {
-                int n = 0;
+                int cantidad = 0;
                 foreach (Personaje p in miembros)
                 {
-                    if (p.EstaVivo) n++;
+                    if (p.EstaVivo) cantidad++;
                 }
-                return n;
+                return cantidad;
             }
         }
 
@@ -96,37 +112,33 @@ namespace ArenaElemental.Motor
             get { return Vivos == 0; }
         }
 
-        /// <summary>Daño total que este equipo ha causado en la partida.</summary>
+        /// <summary>El daño total que este equipo le ha causado al rival en la partida.</summary>
         public int DanoInfligido
         {
             get { return danoInfligido; }
         }
 
-        internal void SumarDanoInfligido(int cantidad)
+        public void SumarDanoInfligido(int cantidad)
         {
-            if (cantidad > 0) danoInfligido += cantidad;
+            if (cantidad > 0) danoInfligido = danoInfligido + cantidad;
         }
 
         /// <summary>True si el equipo relevó en su turno anterior (no se puede relevar dos turnos seguidos).</summary>
         public bool RelevoBloqueado
         {
-            get { return ultimaAccionFueRelevo; }
+            get { return relevoBloqueado; }
         }
 
-        internal void RegistrarAccionDelTurno(bool fueRelevo)
+        /// <summary>Se llama al terminar cada turno del equipo para recordar si fue un relevo.</summary>
+        public void RegistrarAccionDelTurno(bool fueRelevo)
         {
-            ultimaAccionFueRelevo = fueRelevo;
-        }
-
-        public bool HayRelevoDisponible
-        {
-            get { return banca.Count > 0; }
+            relevoBloqueado = fueRelevo;
         }
 
         /// <summary>
-        /// Relevo: sale el activo y entra el primero de la cola (Dequeue).
+        /// Relevo: sale el personaje activo y entra el primero de la cola (Dequeue).
         /// Si el que sale sigue vivo, se forma al final de la cola (Enqueue).
-        /// Devuelve el texto del evento.
+        /// Devuelve el texto para el historial.
         /// </summary>
         public string Relevar()
         {

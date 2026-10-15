@@ -4,522 +4,427 @@ using System.Collections.Generic;
 namespace ArenaElemental.Modelos
 {
     /// <summary>
-    /// Clase base abstracta de todas las cartas/personajes de Arena Elemental.
-    /// Encapsula las estadísticas y valida que nunca queden valores negativos:
-    ///  - Estadísticas base (ATK, DEF, HP máx., ENG máx., Empatía...): lanzan
-    ///    ArgumentOutOfRangeException si se intenta asignar un valor negativo.
-    ///  - Estadísticas dinámicas (HP, ENG, recargas): se ajustan (clamp) al rango [0, máximo].
-    /// Cada personaje tiene DOS habilidades: una de ataque y una de utilidad (ver la clase Habilidad).
+    /// Clase base de todos los personajes de Arena Elemental (CartaFuego, CartaAgua, CartaTierra y CartaAire
+    /// heredan de ella). Es abstracta: no se puede crear un "Personaje" solo, siempre es de un elemento.
+    ///
+    /// Guarda las estadísticas (vida, ataque, defensa, energía...), calcula el daño y sabe usar sus dos
+    /// habilidades: la 0 es de ataque y la 1 es de utilidad.
+    /// Lo único que cambia entre las cuatro clases hijas es el triángulo elemental
+    /// (ObtenerMultiplicador) y cómo hacer una copia (CrearCopia): eso es el polimorfismo.
     /// </summary>
     public abstract class Personaje
     {
-        // ---------- Constantes del triángulo elemental y reglas generales ----------
-        public const double MultiplicadorVentaja = 1.5;
-        public const double MultiplicadorDesventaja = 0.5;
+        // ---------- Constantes ----------
+        public const double MultiplicadorVentaja = 1.5;     // el elemento le gana al del enemigo
+        public const double MultiplicadorDesventaja = 0.5;  // el elemento pierde contra el del enemigo
         public const double MultiplicadorNeutro = 1.0;
 
-        /// <summary>Energía que regenera el personaje activo al iniciar su turno.</summary>
-        public const int EnergiaPorTurno = 2;
+        public const int EnergiaPorTurno = 2;        // energía que recupera al empezar su turno
+        public const int CantidadHabilidades = 2;    // 0 = ataque, 1 = utilidad
 
-        /// <summary>Cada personaje tiene exactamente dos habilidades: 0 = ataque, 1 = utilidad.</summary>
-        public const int CantidadHabilidades = 2;
-
-        // ---------- Campos privados ----------
-        private int id;
-        private string nombre;
-        private readonly Elemento elemento;
-        private int hpMax;
+        // ---------- Campos privados (encapsulamiento) ----------
         private int hp;
-        private int atk;
-        private int defensa;
-        private int energiaMax;
         private int energia;
-        private int empatia;
-        private double multiplicadorEscenario = 1.0;
+        private Habilidad habilidadAtaque;
+        private Habilidad habilidadUtilidad;
 
-        private Habilidad[] habilidades = new Habilidad[CantidadHabilidades];
-
-        // Efectos temporales que dejan las habilidades de utilidad.
-        private double bonoAtaque;         // 0.3 = +30% de ataque
+        // Efectos temporales que dejan las habilidades de utilidad
+        private double bonoAtaque;       // 0.3 = +30% de ataque
         private int turnosBonoAtaque;
-        private int bonoDefensa;           // defensa extra
+        private int bonoDefensa;         // puntos de defensa extra
         private int turnosBonoDefensa;
-        private double reflejo;            // 0.5 = devuelve el 50% del daño recibido
+        private double reflejo;          // 0.5 = devuelve el 50% del daño recibido
         private int turnosReflejo;
 
         // ---------- Constructor ----------
         protected Personaje(int id, string nombre, Elemento elemento,
-                            int hpMax, int atk, int defensa,
-                            int energiaMax, int empatia,
+                            int hpMax, int atk, int defensa, int energiaMax, int empatia,
                             Habilidad habilidadAtaque, Habilidad habilidadUtilidad)
         {
-            if (habilidadAtaque == null || !habilidadAtaque.EsOfensiva)
-                throw new ArgumentException("La primera habilidad debe ser de ataque.", "habilidadAtaque");
-            if (habilidadUtilidad == null || habilidadUtilidad.EsOfensiva)
-                throw new ArgumentException("La segunda habilidad debe ser de utilidad.", "habilidadUtilidad");
+            // Validaciones básicas: nada de estadísticas negativas ni nombres vacíos.
+            if (nombre == null || nombre.Trim().Length == 0)
+                throw new ArgumentException("El personaje necesita nombre.");
+            if (hpMax <= 0)
+                throw new ArgumentOutOfRangeException("hpMax", "La vida máxima debe ser mayor que 0.");
+            if (atk < 0 || defensa < 0 || energiaMax < 0 || empatia < 0)
+                throw new ArgumentOutOfRangeException("atk", "Las estadísticas no pueden ser negativas.");
+            if (!habilidadAtaque.EsOfensiva || habilidadUtilidad.EsOfensiva)
+                throw new ArgumentException("La primera habilidad debe ser de ataque y la segunda de utilidad.");
 
-            this.elemento = elemento;
             Id = id;
-            Nombre = nombre;
+            Nombre = nombre.Trim();
+            Elemento = elemento;
             HpMax = hpMax;
             Atk = atk;
             Defensa = defensa;
             EnergiaMax = energiaMax;
             Empatia = empatia;
-            habilidades[0] = habilidadAtaque;
-            habilidades[1] = habilidadUtilidad;
+            MultiplicadorEscenario = 1.0;
+            this.habilidadAtaque = habilidadAtaque;
+            this.habilidadUtilidad = habilidadUtilidad;
 
-            // Estado inicial: vida y energía completas, habilidades listas.
-            Hp = HpMax;
-            Energia = EnergiaMax;
+            // Empieza con la vida y la energía llenas.
+            hp = hpMax;
+            energia = energiaMax;
         }
 
-        // ---------- Propiedades encapsuladas ----------
-        public int Id
-        {
-            get { return id; }
-            set { id = ValidarNoNegativo(value, "Id"); }
-        }
+        // ---------- Estadísticas ----------
+        public int Id { get; private set; }
+        public string Nombre { get; private set; }
+        public Elemento Elemento { get; private set; }
+        public int HpMax { get; private set; }
+        public int Atk { get; private set; }
+        public int Defensa { get; private set; }
+        public int EnergiaMax { get; private set; }
 
-        public string Nombre
-        {
-            get { return nombre; }
-            set
-            {
-                if (string.IsNullOrWhiteSpace(value))
-                    throw new ArgumentException("El nombre del personaje no puede estar vacío.", "Nombre");
-                nombre = value.Trim();
-            }
-        }
+        /// <summary>La empatía aumenta las curaciones y la energía que se gana al entrar de relevo.</summary>
+        public int Empatia { get; private set; }
 
-        public Elemento Elemento
-        {
-            get { return elemento; }
-        }
+        /// <summary>Multiplicador de ataque del escenario (1.0 = sin efecto). Lo cambia el combate.</summary>
+        public double MultiplicadorEscenario { get; set; }
 
-        /// <summary>Vida máxima (debe ser mayor que 0). Si se reduce, recorta el HP actual.</summary>
-        public int HpMax
-        {
-            get { return hpMax; }
-            set
-            {
-                if (value <= 0)
-                    throw new ArgumentOutOfRangeException("HpMax", value, "La vida máxima debe ser mayor que 0.");
-                hpMax = value;
-                if (hp > hpMax) hp = hpMax;
-            }
-        }
-
-        /// <summary>Vida actual, siempre dentro de [0, HpMax].</summary>
+        /// <summary>Vida actual. Siempre queda entre 0 y HpMax.</summary>
         public int Hp
         {
             get { return hp; }
-            set { hp = Limitar(value, 0, hpMax); }
-        }
-
-        public int Atk
-        {
-            get { return atk; }
-            set { atk = ValidarNoNegativo(value, "Atk"); }
-        }
-
-        /// <summary>Defensa base (escudo). Ver DefensaEfectiva para incluir efectos temporales.</summary>
-        public int Defensa
-        {
-            get { return defensa; }
-            set { defensa = ValidarNoNegativo(value, "Defensa"); }
-        }
-
-        public int EnergiaMax
-        {
-            get { return energiaMax; }
             set
             {
-                energiaMax = ValidarNoNegativo(value, "EnergiaMax");
-                if (energia > energiaMax) energia = energiaMax;
+                if (value < 0) value = 0;
+                if (value > HpMax) value = HpMax;
+                hp = value;
             }
         }
 
-        /// <summary>Energía actual, siempre dentro de [0, EnergiaMax].</summary>
+        /// <summary>Energía actual. Siempre queda entre 0 y EnergiaMax.</summary>
         public int Energia
         {
             get { return energia; }
-            set { energia = Limitar(value, 0, energiaMax); }
-        }
-
-        /// <summary>Empatía: potencia curaciones/efectos de apoyo y el bonus al entrar de relevo.</summary>
-        public int Empatia
-        {
-            get { return empatia; }
-            set { empatia = ValidarNoNegativo(value, "Empatia"); }
-        }
-
-        /// <summary>
-        /// Multiplicador de ataque aplicado por el escenario (1.0 = sin efecto).
-        /// Lo configura el motor de combate al iniciar la partida.
-        /// </summary>
-        public double MultiplicadorEscenario
-        {
-            get { return multiplicadorEscenario; }
             set
             {
-                if (value <= 0)
-                    throw new ArgumentOutOfRangeException("MultiplicadorEscenario", value, "Debe ser mayor que 0.");
-                multiplicadorEscenario = value;
+                if (value < 0) value = 0;
+                if (value > EnergiaMax) value = EnergiaMax;
+                energia = value;
             }
         }
 
-        // ---------- Habilidades ----------
-
-        /// <summary>La habilidad de ataque (número 0).</summary>
-        public Habilidad HabilidadAtaque
-        {
-            get { return habilidades[0]; }
-        }
-
-        /// <summary>La habilidad de utilidad (número 1).</summary>
-        public Habilidad HabilidadUtilidad
-        {
-            get { return habilidades[1]; }
-        }
-
-        public Habilidad ObtenerHabilidad(int numero)
-        {
-            if (numero < 0 || numero >= CantidadHabilidades)
-                throw new ArgumentOutOfRangeException("numero", numero, "Solo existen las habilidades 0 (ataque) y 1 (utilidad).");
-            return habilidades[numero];
-        }
-
-        /// <summary>Veces que se han usado las habilidades (estadística).</summary>
-        public int UsosHabilidad
-        {
-            get { return habilidades[0].Usos + habilidades[1].Usos; }
-        }
-
-        // ---------- Efectos temporales (los dejan las habilidades de utilidad) ----------
-
-        /// <summary>Ataque real en combate, con el potenciador si está activo.</summary>
-        public int AtkEfectivo
-        {
-            get { return (int)Math.Round(atk * (1.0 + bonoAtaque)); }
-        }
-
-        /// <summary>Porcentaje extra de ataque activo (0 si no hay).</summary>
-        public double BonoAtaque
-        {
-            get { return bonoAtaque; }
-        }
-
-        public int TurnosBonoAtaque
-        {
-            get { return turnosBonoAtaque; }
-        }
-
-        /// <summary>Defensa extra activa ahora mismo (0 si no hay).</summary>
-        public int BonoDefensaActual
-        {
-            get { return bonoDefensa; }
-        }
-
-        public int TurnosBonoDefensa
-        {
-            get { return turnosBonoDefensa; }
-        }
-
-        /// <summary>Fracción del daño que devuelve el reflejo activo (0 si no hay).</summary>
-        public double ReflejoActual
-        {
-            get { return reflejo; }
-        }
-
-        public int TurnosReflejo
-        {
-            get { return turnosReflejo; }
-        }
-
-        // ---------- Propiedades derivadas ----------
         public bool EstaVivo
         {
             get { return hp > 0; }
         }
 
-        /// <summary>Defensa real en combate: la base más el bonus temporal.</summary>
-        public virtual int DefensaEfectiva
+        // ---------- Habilidades ----------
+        public Habilidad HabilidadAtaque
         {
-            get { return defensa + bonoDefensa; }
+            get { return habilidadAtaque; }
         }
 
-        /// <summary>Crea una copia nueva con las mismas estadísticas base y el estado inicial (vida/energía completas).</summary>
+        public Habilidad HabilidadUtilidad
+        {
+            get { return habilidadUtilidad; }
+        }
+
+        /// <summary>Devuelve la habilidad 0 (ataque) o la 1 (utilidad).</summary>
+        public Habilidad ObtenerHabilidad(int numero)
+        {
+            if (numero == 0) return habilidadAtaque;
+            if (numero == 1) return habilidadUtilidad;
+            throw new ArgumentOutOfRangeException("numero", "Solo existen la habilidad 0 (ataque) y la 1 (utilidad).");
+        }
+
+        // ---------- Efectos temporales ----------
+
+        /// <summary>El ataque real: el ataque base más el potenciador si está activo.</summary>
+        public int AtkEfectivo
+        {
+            get { return (int)Math.Round(Atk * (1.0 + bonoAtaque)); }
+        }
+
+        /// <summary>La defensa real: la base más la defensa extra si está activa.</summary>
+        public int DefensaEfectiva
+        {
+            get { return Defensa + bonoDefensa; }
+        }
+
+        public double BonoAtaque
+        {
+            get { return bonoAtaque; }
+        }
+
+        public int BonoDefensaActual
+        {
+            get { return bonoDefensa; }
+        }
+
+        public double ReflejoActual
+        {
+            get { return reflejo; }
+        }
+
+        // ---------- Métodos que cambian en cada elemento ----------
+
+        /// <summary>Hace una copia nueva del personaje, con la vida y la energía llenas.</summary>
         public abstract Personaje CrearCopia();
 
-        // ---------- Triángulo elemental y cálculo de daño ----------
+        /// <summary>
+        /// Multiplicador de daño contra el elemento del enemigo (1.5, 0.5 o 1.0).
+        /// Cada clase hija lo escribe según el triángulo: Agua > Fuego > Aire > Tierra > Agua.
+        /// </summary>
+        public abstract double ObtenerMultiplicador(Elemento enemigo);
+
+        // ---------- Daño ----------
 
         /// <summary>
-        /// Multiplicador de daño de este personaje contra un elemento enemigo.
-        /// Las clases hijas lo sobrescriben según el triángulo Agua > Fuego > Aire > Tierra > Agua.
+        /// Fórmula del daño: ATK * factor * multiplicador elemental * escenario - DEF * (1 - defensa ignorada).
+        /// El mínimo es 1. "factor" es la potencia del golpe (1.0 = ataque básico) y
+        /// "defensaIgnorada" es la parte de la defensa del enemigo que no cuenta (de 0 a 1).
         /// </summary>
-        public virtual double ObtenerMultiplicador(Elemento enemigo)
+        private int CalcularDano(Personaje objetivo, double factor, double defensaIgnorada)
         {
-            return MultiplicadorNeutro;
+            double ataque = Atk * (1.0 + bonoAtaque) * factor * ObtenerMultiplicador(objetivo.Elemento) * MultiplicadorEscenario;
+            double escudo = objetivo.DefensaEfectiva * (1.0 - defensaIgnorada);
+            int dano = (int)Math.Round(ataque - escudo, MidpointRounding.AwayFromZero);
+            if (dano < 1) dano = 1;
+            return dano;
         }
 
-        /// <summary>Daño de un ataque básico contra el objetivo (mínimo 1).</summary>
-        public virtual int CalcularDano(Personaje objetivo)
+        /// <summary>Le quita vida al personaje (nunca baja de 0) y devuelve el daño que realmente recibió.</summary>
+        public int RecibirDano(int dano)
         {
-            return CalcularDanoPotenciado(objetivo, 1.0, 0.0);
+            if (dano < 0) dano = 0;
+            int vidaAntes = hp;
+            Hp = hp - dano;
+            return vidaAntes - hp;
         }
 
-        /// <summary>
-        /// Fórmula común: max(1, ATK * factor * multiplicadorElemental * escenario - DEF * (1 - defensaIgnorada)).
-        /// El ATK incluye el potenciador de ataque si está activo.
-        /// </summary>
-        /// <param name="factor">Potencia del golpe (1.0 = ataque básico).</param>
-        /// <param name="fraccionDefensaIgnorada">Parte de la defensa objetivo que se ignora, entre 0 y 1.</param>
-        protected int CalcularDanoPotenciado(Personaje objetivo, double factor, double fraccionDefensaIgnorada)
+        /// <summary>Recupera vida (sin pasar de HpMax). Devuelve cuánta vida se curó. Un derrotado no revive.</summary>
+        public int Curar(int cantidad)
         {
-            ValidarObjetivo(objetivo);
-            if (factor < 0)
-                throw new ArgumentOutOfRangeException("factor", factor, "El factor de daño no puede ser negativo.");
-            if (fraccionDefensaIgnorada < 0 || fraccionDefensaIgnorada > 1)
-                throw new ArgumentOutOfRangeException("fraccionDefensaIgnorada", fraccionDefensaIgnorada, "Debe estar entre 0 y 1.");
-
-            double bruto = Atk * (1.0 + bonoAtaque) * factor * ObtenerMultiplicador(objetivo.Elemento) * multiplicadorEscenario;
-            double escudo = objetivo.DefensaEfectiva * (1.0 - fraccionDefensaIgnorada);
-            int dano = (int)Math.Round(bruto - escudo, MidpointRounding.AwayFromZero);
-            return Math.Max(1, dano);
+            if (!EstaVivo) return 0;
+            int vidaAntes = hp;
+            Hp = hp + cantidad;
+            return hp - vidaAntes;
         }
 
-        // ---------- Acciones de combate ----------
-
-        /// <summary>Ataque básico. Devuelve el texto del evento para el registro de combate.</summary>
-        public virtual string Atacar(Personaje objetivo)
+        /// <summary>Recupera energía (sin pasar de EnergiaMax). Devuelve cuánta energía ganó.</summary>
+        public int RecuperarEnergia(int cantidad)
         {
-            ValidarObjetivo(objetivo);
+            int energiaAntes = energia;
+            Energia = energia + cantidad;
+            return energia - energiaAntes;
+        }
+
+        // ---------- Ataque básico ----------
+
+        /// <summary>Ataque básico contra el objetivo. Devuelve el texto que se escribe en el historial.</summary>
+        public string Atacar(Personaje objetivo)
+        {
             if (!EstaVivo)
                 return Nombre + " está derrotado y no puede actuar.";
             if (!objetivo.EstaVivo)
                 return Nombre + " no puede atacar a " + objetivo.Nombre + ": ya está derrotado.";
 
-            double mult = ObtenerMultiplicador(objetivo.Elemento);
-            int real = objetivo.RecibirDano(CalcularDano(objetivo));
-            return Nombre + " ataca a " + objetivo.Nombre + " y causa " + real + " de daño" + DescribirEfectividad(mult) + "."
-                   + objetivo.Reflejar(this, real);
+            double multiplicador = ObtenerMultiplicador(objetivo.Elemento);
+            int real = objetivo.RecibirDano(CalcularDano(objetivo, 1.0, 0.0));
+
+            return Nombre + " ataca a " + objetivo.Nombre + " y causa " + real + " de daño"
+                   + DescribirEfectividad(multiplicador) + "." + objetivo.Reflejar(this, real);
         }
 
-        /// <summary>Resta vida (nunca por debajo de 0) y devuelve el daño realmente aplicado.</summary>
-        public virtual int RecibirDano(int dano)
-        {
-            if (dano < 0)
-                throw new ArgumentOutOfRangeException("dano", dano, "El daño no puede ser negativo.");
-            int antes = hp;
-            Hp = hp - dano;
-            return antes - hp;
-        }
-
-        /// <summary>Recupera vida (sin pasar de HpMax ni revivir). Devuelve la vida realmente curada.</summary>
-        public int Curar(int cantidad)
-        {
-            if (cantidad < 0)
-                throw new ArgumentOutOfRangeException("cantidad", cantidad, "La curación no puede ser negativa.");
-            if (!EstaVivo) return 0;
-            int antes = hp;
-            Hp = hp + cantidad;
-            return hp - antes;
-        }
-
-        /// <summary>Gasta energía. Devuelve false (sin gastar nada) si no hay suficiente.</summary>
-        public bool GastarEnergia(int cantidad)
-        {
-            if (cantidad < 0)
-                throw new ArgumentOutOfRangeException("cantidad", cantidad, "El gasto de energía no puede ser negativo.");
-            if (cantidad > energia) return false;
-            energia -= cantidad;
-            return true;
-        }
-
-        /// <summary>Recupera energía (sin pasar de EnergiaMax). Devuelve la energía realmente ganada.</summary>
-        public int RecuperarEnergia(int cantidad)
-        {
-            if (cantidad < 0)
-                throw new ArgumentOutOfRangeException("cantidad", cantidad, "La energía recuperada no puede ser negativa.");
-            int antes = energia;
-            Energia = energia + cantidad;
-            return energia - antes;
-        }
-
-        /// <summary>Si el personaje tiene el reflejo activo, devuelve parte del daño al atacante (nunca lo derrota).</summary>
+        /// <summary>Si tiene el reflejo activo, le devuelve parte del daño al atacante (sin dejarlo en 0).</summary>
         private string Reflejar(Personaje atacante, int danoRecibido)
         {
-            if (turnosReflejo <= 0 || danoRecibido <= 0 || !atacante.EstaVivo) return string.Empty;
+            if (turnosReflejo <= 0 || danoRecibido <= 0 || !atacante.EstaVivo) return "";
 
             int devuelto = (int)Math.Round(danoRecibido * reflejo);
-            if (devuelto > atacante.hp - 1) devuelto = atacante.hp - 1;
-            if (devuelto <= 0) return string.Empty;
+            if (devuelto > atacante.Hp - 1) devuelto = atacante.Hp - 1;   // no lo puede derrotar
+            if (devuelto <= 0) return "";
 
             atacante.RecibirDano(devuelto);
             return " " + Nombre + " le devuelve " + devuelto + " de daño a " + atacante.Nombre + ".";
         }
 
-        // ---------- Uso de habilidades ----------
+        private string DescribirEfectividad(double multiplicador)
+        {
+            if (multiplicador > MultiplicadorNeutro) return " (¡muy efectivo!)";
+            if (multiplicador < MultiplicadorNeutro) return " (poco efectivo)";
+            return "";
+        }
 
-        /// <summary>Vivo, sin recarga pendiente y con energía suficiente.</summary>
+        // ---------- Habilidades ----------
+
+        /// <summary>Se puede usar si está vivo, no está en recarga y le alcanza la energía.</summary>
         public bool PuedeUsarHabilidad(int numero)
         {
             Habilidad h = ObtenerHabilidad(numero);
             return EstaVivo && h.CooldownActual == 0 && energia >= h.Costo;
         }
 
-        /// <summary>
-        /// Usa una de las dos habilidades (0 = ataque, 1 = utilidad) y devuelve el texto del evento.
-        /// Si es de ataque, "objetivo" es el enemigo. Si es de utilidad, es el aliado a ayudar (null = el mismo personaje).
-        /// "equipo" son los aliados (se usa para curar a todo el equipo). Si no se puede usar, no consume nada.
-        /// </summary>
-        public string UsarHabilidad(int numero, Personaje objetivo, List<Personaje> equipo)
-        {
-            Habilidad h = ObtenerHabilidad(numero);
-            if (!PuedeUsarHabilidad(numero)) return MensajeHabilidadNoDisponible(h);
-
-            if (h.EsOfensiva) return UsarHabilidadDeAtaque(h, objetivo);
-            return UsarHabilidadDeUtilidad(h, objetivo, equipo);
-        }
-
-        /// <summary>Cantidad de vida que cura una habilidad de curación de este personaje.</summary>
+        /// <summary>Cuánta vida cura una habilidad de curación de este personaje.</summary>
         public int CuracionDe(Habilidad h)
         {
             return (int)Math.Round(HpMax * h.Potencia) + Empatia * 2;
         }
 
+        /// <summary>
+        /// Usa la habilidad 0 (ataque) o la 1 (utilidad) y devuelve el texto para el historial.
+        /// En una habilidad de ataque, "objetivo" es el enemigo. En una de utilidad es el aliado
+        /// al que se ayuda (null = él mismo). "equipo" son todos sus aliados (para curar a todos).
+        /// </summary>
+        public string UsarHabilidad(int numero, Personaje objetivo, List<Personaje> equipo)
+        {
+            Habilidad h = ObtenerHabilidad(numero);
+
+            if (!PuedeUsarHabilidad(numero))
+                return ExplicarPorQueNoPuede(h);
+
+            if (h.EsOfensiva)
+                return UsarHabilidadDeAtaque(h, objetivo);
+            return UsarHabilidadDeUtilidad(h, objetivo, equipo);
+        }
+
+        /// <summary>Gasta la energía de la habilidad y empieza su recarga.</summary>
+        private void GastarHabilidad(Habilidad h)
+        {
+            energia = energia - h.Costo;
+            h.Usar();
+        }
+
+        private string ExplicarPorQueNoPuede(Habilidad h)
+        {
+            if (!EstaVivo)
+                return Nombre + " está derrotado y no puede actuar.";
+            if (h.CooldownActual > 0)
+                return h.Nombre + " en recarga (" + h.CooldownActual + " turno(s)).";
+            return Nombre + " no tiene energía suficiente para " + h.Nombre + " (" + energia + "/" + h.Costo + ").";
+        }
+
+        // ----- Habilidades de ataque -----
+
         private string UsarHabilidadDeAtaque(Habilidad h, Personaje objetivo)
         {
-            ValidarObjetivo(objetivo);
-            if (!objetivo.EstaVivo) return h.Nombre + " no puede dirigirse a un objetivo derrotado.";
+            if (!objetivo.EstaVivo)
+                return h.Nombre + " no puede dirigirse a un objetivo derrotado.";
 
-            double mult = ObtenerMultiplicador(objetivo.Elemento);
-            ConsumirHabilidad(h);
+            double multiplicador = ObtenerMultiplicador(objetivo.Elemento);
+            GastarHabilidad(h);
 
-            int total = 0;
-            string extra = string.Empty;
-            switch (h.Efecto)
+            int total = 0;       // daño total causado
+            string extra = "";   // texto adicional según el efecto
+
+            if (h.Efecto == EfectoHabilidad.GolpePotenciado)
             {
-                case EfectoHabilidad.GolpePotenciado:
-                    total = objetivo.RecibirDano(CalcularDanoPotenciado(objetivo, h.Potencia, h.Extra));
-                    break;
+                total = objetivo.RecibirDano(CalcularDano(objetivo, h.Potencia, h.Extra));
+            }
+            else if (h.Efecto == EfectoHabilidad.DobleGolpe)
+            {
+                // Se recalcula el daño en cada golpe por si el primero cambia algo en el objetivo.
+                total = objetivo.RecibirDano(CalcularDano(objetivo, h.Potencia, 0.0));
+                total = total + objetivo.RecibirDano(CalcularDano(objetivo, h.Potencia, 0.0));
 
-                case EfectoHabilidad.DobleGolpe:
-                    for (int golpe = 0; golpe < 2; golpe++)
-                    {
-                        // Se recalcula en cada golpe por si el primer impacto cambia el estado del objetivo.
-                        total += objetivo.RecibirDano(CalcularDanoPotenciado(objetivo, h.Potencia, 0.0));
-                    }
-                    int ganada = RecuperarEnergia(h.Duracion);
-                    if (ganada > 0) extra = " y recupera " + ganada + " de energía";
-                    break;
-
-                case EfectoHabilidad.GolpeVampirico:
-                    total = objetivo.RecibirDano(CalcularDanoPotenciado(objetivo, h.Potencia, 0.0));
-                    int robado = Curar((int)Math.Round(total * h.Extra));
-                    if (robado > 0) extra = " y se cura " + robado + " HP";
-                    break;
-
-                case EfectoHabilidad.GolpeConRetroceso:
-                    total = objetivo.RecibirDano(CalcularDanoPotenciado(objetivo, h.Potencia, 0.0));
-                    int retroceso = (int)Math.Round(HpMax * h.Extra);
-                    if (retroceso > hp - 1) retroceso = hp - 1;   // el retroceso nunca lo derrota
-                    if (retroceso > 0)
-                    {
-                        RecibirDano(retroceso);
-                        extra = " pero pierde " + retroceso + " HP por el retroceso";
-                    }
-                    break;
+                int ganada = RecuperarEnergia(h.Duracion);
+                if (ganada > 0) extra = " y recupera " + ganada + " de energía";
+            }
+            else if (h.Efecto == EfectoHabilidad.GolpeVampirico)
+            {
+                total = objetivo.RecibirDano(CalcularDano(objetivo, h.Potencia, 0.0));
+                int robado = Curar((int)Math.Round(total * h.Extra));
+                if (robado > 0) extra = " y se cura " + robado + " HP";
+            }
+            else if (h.Efecto == EfectoHabilidad.GolpeConRetroceso)
+            {
+                total = objetivo.RecibirDano(CalcularDano(objetivo, h.Potencia, 0.0));
+                int retroceso = (int)Math.Round(HpMax * h.Extra);
+                if (retroceso > hp - 1) retroceso = hp - 1;   // el retroceso nunca lo derrota
+                if (retroceso > 0)
+                {
+                    RecibirDano(retroceso);
+                    extra = " pero pierde " + retroceso + " HP por el retroceso";
+                }
             }
 
             return Nombre + " usa " + h.Nombre + " sobre " + objetivo.Nombre + " y causa " + total + " de daño"
-                   + DescribirEfectividad(mult) + extra + "." + objetivo.Reflejar(this, total);
+                   + DescribirEfectividad(multiplicador) + extra + "." + objetivo.Reflejar(this, total);
         }
+
+        // ----- Habilidades de utilidad -----
 
         private string UsarHabilidadDeUtilidad(Habilidad h, Personaje objetivo, List<Personaje> equipo)
         {
-            switch (h.Efecto)
+            if (h.Efecto == EfectoHabilidad.Curar)
+                return UsarCuracion(h, objetivo);
+            if (h.Efecto == EfectoHabilidad.CurarEquipo)
+                return UsarCuracionDeEquipo(h, equipo);
+
+            GastarHabilidad(h);
+
+            if (h.Efecto == EfectoHabilidad.PotenciarAtaque)
             {
-                case EfectoHabilidad.Curar:
-                    {
-                        Personaje destino = objetivo ?? this;
-                        if (!destino.EstaVivo) return h.Nombre + " no puede revivir a " + destino.Nombre + ".";
-                        ConsumirHabilidad(h);
-                        int curado = destino.Curar(CuracionDe(h));
-                        return Nombre + " usa " + h.Nombre + " y cura " + curado + " HP a "
-                               + (destino == this ? "sí mismo" : destino.Nombre) + ".";
-                    }
-                case EfectoHabilidad.CurarEquipo:
-                    {
-                        ConsumirHabilidad(h);
-                        int cantidad = CuracionDe(h);
-                        int total = 0;
-                        if (equipo != null)
-                        {
-                            foreach (Personaje aliado in equipo)
-                                total += aliado.Curar(cantidad);
-                        }
-                        return Nombre + " usa " + h.Nombre + " y cura " + total + " HP en total a su equipo.";
-                    }
-                case EfectoHabilidad.PotenciarAtaque:
-                    ConsumirHabilidad(h);
-                    bonoAtaque = h.Potencia;
-                    turnosBonoAtaque = h.Duracion + 1;   // +1 porque se descuenta al iniciar el próximo turno
-                    return Nombre + " usa " + h.Nombre + ": +" + (int)Math.Round(h.Potencia * 100)
-                           + "% de ataque durante " + h.Duracion + " turnos.";
-
-                case EfectoHabilidad.PotenciarDefensa:
-                    ConsumirHabilidad(h);
-                    bonoDefensa = Math.Max(2, defensa / 2 + empatia / 2);
-                    turnosBonoDefensa = h.Duracion;
-                    return Nombre + " usa " + h.Nombre + ": +" + bonoDefensa + " de defensa durante "
-                           + h.Duracion + " turnos del rival.";
-
-                case EfectoHabilidad.Reflejo:
-                    ConsumirHabilidad(h);
-                    reflejo = h.Potencia;
-                    turnosReflejo = h.Duracion;
-                    return Nombre + " usa " + h.Nombre + ": devolverá el " + (int)Math.Round(h.Potencia * 100)
-                           + "% del daño recibido durante " + h.Duracion + " turnos del rival.";
-
-                default:   // RecargarEnergia
-                    {
-                        ConsumirHabilidad(h);
-                        int ganada = RecuperarEnergia(h.Duracion);
-                        return Nombre + " usa " + h.Nombre + " y recupera " + ganada + " de energía.";
-                    }
+                bonoAtaque = h.Potencia;
+                turnosBonoAtaque = h.Duracion + 1;   // +1 porque se descuenta al empezar el siguiente turno
+                return Nombre + " usa " + h.Nombre + ": +" + (int)Math.Round(h.Potencia * 100)
+                       + "% de ataque durante " + h.Duracion + " turnos.";
             }
+            if (h.Efecto == EfectoHabilidad.PotenciarDefensa)
+            {
+                bonoDefensa = Math.Max(2, Defensa / 2 + Empatia / 2);
+                turnosBonoDefensa = h.Duracion;
+                return Nombre + " usa " + h.Nombre + ": +" + bonoDefensa + " de defensa durante "
+                       + h.Duracion + " turnos del rival.";
+            }
+            if (h.Efecto == EfectoHabilidad.Reflejo)
+            {
+                reflejo = h.Potencia;
+                turnosReflejo = h.Duracion;
+                return Nombre + " usa " + h.Nombre + ": devolverá el " + (int)Math.Round(h.Potencia * 100)
+                       + "% del daño recibido durante " + h.Duracion + " turnos del rival.";
+            }
+
+            // Lo que queda es RecargarEnergia
+            int ganada = RecuperarEnergia(h.Duracion);
+            return Nombre + " usa " + h.Nombre + " y recupera " + ganada + " de energía.";
         }
 
-        /// <summary>Descuenta la energía, activa la recarga y suma el uso.</summary>
-        private void ConsumirHabilidad(Habilidad h)
+        private string UsarCuracion(Habilidad h, Personaje objetivo)
         {
-            if (energia < h.Costo || h.CooldownActual > 0)
-                throw new InvalidOperationException("La habilidad no está disponible.");
-            energia -= h.Costo;
-            h.Registrar();
+            Personaje destino = objetivo;
+            if (destino == null) destino = this;   // si no se eligió aliado, se cura a sí mismo
+
+            if (!destino.EstaVivo)
+                return h.Nombre + " no puede revivir a " + destino.Nombre + ".";
+
+            GastarHabilidad(h);
+            int curado = destino.Curar(CuracionDe(h));
+
+            string quien = destino.Nombre;
+            if (destino == this) quien = "sí mismo";
+            return Nombre + " usa " + h.Nombre + " y cura " + curado + " HP a " + quien + ".";
         }
 
-        /// <summary>Explica por qué no se puede usar la habilidad (para el log).</summary>
-        private string MensajeHabilidadNoDisponible(Habilidad h)
+        private string UsarCuracionDeEquipo(Habilidad h, List<Personaje> equipo)
         {
-            if (!EstaVivo) return Nombre + " está derrotado y no puede actuar.";
-            if (h.CooldownActual > 0)
-                return h.Nombre + " en recarga (" + h.CooldownActual + " turno(s)).";
-            return Nombre + " no tiene energía suficiente para " + h.Nombre
-                   + " (" + energia + "/" + h.Costo + ").";
+            GastarHabilidad(h);
+            int cantidad = CuracionDe(h);
+            int total = 0;
+            if (equipo != null)
+            {
+                foreach (Personaje aliado in equipo)
+                    total = total + aliado.Curar(cantidad);
+            }
+            return Nombre + " usa " + h.Nombre + " y cura " + total + " HP en total a su equipo.";
         }
 
-        // ---------- Ciclo de turnos y relevos ----------
+        // ---------- Turnos y relevos ----------
 
-        /// <summary>Se invoca al inicio del turno del personaje activo: avanza recargas y efectos, y regenera energía.</summary>
-        public virtual void IniciarTurno()
+        /// <summary>Se llama cuando empieza el turno del personaje activo: baja las recargas, da energía y cuenta los efectos.</summary>
+        public void IniciarTurno()
         {
             if (!EstaVivo) return;
-            foreach (Habilidad h in habilidades) h.AvanzarTurno();
+
+            habilidadAtaque.PasarTurno();
+            habilidadUtilidad.PasarTurno();
             RecuperarEnergia(EnergiaPorTurno);
 
+            // Cada efecto temporal dura unos turnos; al llegar a 0 se apaga.
             if (turnosBonoAtaque > 0)
             {
                 turnosBonoAtaque--;
@@ -537,18 +442,19 @@ namespace ArenaElemental.Modelos
             }
         }
 
-        /// <summary>Se invoca al entrar de relevo; la Empatía otorga energía extra.</summary>
-        public virtual string AlEntrarEnRelevo(Personaje saliente)
+        /// <summary>Se llama cuando entra de relevo. La empatía le da algo de energía. Devuelve el texto del historial.</summary>
+        public string AlEntrarEnRelevo(Personaje saliente)
         {
             int bonus = RecuperarEnergia(Empatia / 2);
+
             string texto = Nombre + " entra al combate";
-            if (saliente != null) texto += " relevando a " + saliente.Nombre;
-            if (bonus > 0) texto += " y recupera " + bonus + " de energía por su empatía";
+            if (saliente != null) texto = texto + " relevando a " + saliente.Nombre;
+            if (bonus > 0) texto = texto + " y recupera " + bonus + " de energía por su empatía";
             return texto + ".";
         }
 
-        /// <summary>Se invoca cuando el personaje deja el campo (relevo o derrota). Limpia los efectos temporales.</summary>
-        public virtual void AlSalirDelCampo()
+        /// <summary>Se llama cuando sale del campo (relevo o derrota): se apagan los efectos temporales.</summary>
+        public void AlSalirDelCampo()
         {
             bonoAtaque = 0;
             turnosBonoAtaque = 0;
@@ -556,34 +462,6 @@ namespace ArenaElemental.Modelos
             turnosBonoDefensa = 0;
             reflejo = 0;
             turnosReflejo = 0;
-        }
-
-        // ---------- Utilidades ----------
-        protected static string DescribirEfectividad(double multiplicador)
-        {
-            if (multiplicador > MultiplicadorNeutro) return " (¡muy efectivo!)";
-            if (multiplicador < MultiplicadorNeutro) return " (poco efectivo)";
-            return string.Empty;
-        }
-
-        protected static void ValidarObjetivo(Personaje objetivo)
-        {
-            if (objetivo == null)
-                throw new ArgumentNullException("objetivo");
-        }
-
-        private static int ValidarNoNegativo(int valor, string campo)
-        {
-            if (valor < 0)
-                throw new ArgumentOutOfRangeException(campo, valor, campo + " no puede ser negativo.");
-            return valor;
-        }
-
-        private static int Limitar(int valor, int minimo, int maximo)
-        {
-            if (valor < minimo) return minimo;
-            if (valor > maximo) return maximo;
-            return valor;
         }
 
         public override string ToString()

@@ -1,47 +1,43 @@
-using System;
-
 namespace ArenaElemental.Modelos
 {
-    /// <summary>Escenario de combate: potencia el ataque de las cartas de su elemento afín.</summary>
+    /// <summary>
+    /// Escenario de combate. Le da un bonus de ataque a los personajes de su elemento afín
+    /// (por ejemplo, el Volcán Ardiente da +10% de ataque a los de Fuego).
+    /// </summary>
     public class Escenario
     {
-        private int id;
-        private string nombre;
-        private int bonusAtaquePct;
-
         public Escenario(int id, string nombre, Elemento elementoAfin, int bonusAtaquePct, string descripcion)
         {
-            if (id < 0) throw new ArgumentOutOfRangeException("id", id, "Id no puede ser negativo.");
-            if (string.IsNullOrWhiteSpace(nombre)) throw new ArgumentException("El escenario necesita nombre.", "nombre");
-            if (bonusAtaquePct < 0) throw new ArgumentOutOfRangeException("bonusAtaquePct", bonusAtaquePct, "El bonus no puede ser negativo.");
-            this.id = id;
-            this.nombre = nombre;
+            Id = id;
+            Nombre = nombre;
             ElementoAfin = elementoAfin;
-            this.bonusAtaquePct = bonusAtaquePct;
-            Descripcion = descripcion ?? string.Empty;
+            BonusAtaquePct = bonusAtaquePct;
+            Descripcion = descripcion;
         }
 
-        public int Id { get { return id; } }
-        public string Nombre { get { return nombre; } }
+        public int Id { get; private set; }
+        public string Nombre { get; private set; }
         public Elemento ElementoAfin { get; private set; }
-        public int BonusAtaquePct { get { return bonusAtaquePct; } }
+        public int BonusAtaquePct { get; private set; }
         public string Descripcion { get; private set; }
 
-        /// <summary>Multiplicador de ataque para un elemento en este escenario (1.0 si no es el afín).</summary>
+        /// <summary>Multiplicador de ataque para un elemento: 1.1 si es el afín del escenario y 1.0 si no.</summary>
         public double MultiplicadorPara(Elemento elemento)
         {
-            return elemento == ElementoAfin ? 1.0 + bonusAtaquePct / 100.0 : 1.0;
+            if (elemento == ElementoAfin)
+                return 1.0 + BonusAtaquePct / 100.0;
+            return 1.0;
         }
 
+        /// <summary>Le pone al personaje el multiplicador de este escenario.</summary>
         public void AplicarA(Personaje personaje)
         {
-            if (personaje == null) throw new ArgumentNullException("personaje");
             personaje.MultiplicadorEscenario = MultiplicadorPara(personaje.Elemento);
         }
 
         public override string ToString()
         {
-            return Nombre + " (" + ElementoAfin + " +" + bonusAtaquePct + "% ATK)";
+            return Nombre + " (" + ElementoAfin + " +" + BonusAtaquePct + "% ATK)";
         }
     }
 }

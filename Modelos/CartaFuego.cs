@@ -1,8 +1,9 @@
 namespace ArenaElemental.Modelos
 {
     /// <summary>
-    /// Facción Fuego (daño puro): fuerte contra Aire, débil contra Agua.
-    /// Sus habilidades de utilidad potencian el ataque.
+    /// Facción Fuego (daño puro). Su habilidad de utilidad potencia el ataque.
+    /// Hereda todo de Personaje; solo escribe lo que es propio de su elemento:
+    /// el triángulo elemental (ObtenerMultiplicador) y la manera de copiarse (CrearCopia).
     /// </summary>
     public class CartaFuego : Personaje
     {
@@ -12,20 +13,19 @@ namespace ArenaElemental.Modelos
         {
         }
 
+        /// <summary>Una copia nueva con la vida y la energía llenas (y copias de las habilidades).</summary>
         public override Personaje CrearCopia()
         {
             return new CartaFuego(Id, Nombre, HpMax, Atk, Defensa, EnergiaMax, Empatia,
                                   HabilidadAtaque.Clonar(), HabilidadUtilidad.Clonar());
         }
 
+        /// <summary>Triángulo: Fuego gana contra Aire y pierde contra Agua.</summary>
         public override double ObtenerMultiplicador(Elemento enemigo)
         {
-            switch (enemigo)
-            {
-                case Elemento.Aire: return MultiplicadorVentaja;      // Fuego > Aire
-                case Elemento.Agua: return MultiplicadorDesventaja;   // Agua > Fuego
-                default: return MultiplicadorNeutro;
-            }
+            if (enemigo == Elemento.Aire) return MultiplicadorVentaja;
+            if (enemigo == Elemento.Agua) return MultiplicadorDesventaja;
+            return MultiplicadorNeutro;
         }
     }
 }

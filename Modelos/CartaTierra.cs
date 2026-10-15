@@ -1,8 +1,9 @@
 namespace ArenaElemental.Modelos
 {
     /// <summary>
-    /// Facción Tierra (tanques): fuerte contra Agua, débil contra Aire.
-    /// Sus habilidades de utilidad suben la defensa o devuelven el daño recibido.
+    /// Facción Tierra (tanques). Su habilidad de utilidad sube la defensa o devuelve daño.
+    /// Hereda todo de Personaje; solo escribe lo que es propio de su elemento:
+    /// el triángulo elemental (ObtenerMultiplicador) y la manera de copiarse (CrearCopia).
     /// </summary>
     public class CartaTierra : Personaje
     {
@@ -12,20 +13,19 @@ namespace ArenaElemental.Modelos
         {
         }
 
+        /// <summary>Una copia nueva con la vida y la energía llenas (y copias de las habilidades).</summary>
         public override Personaje CrearCopia()
         {
             return new CartaTierra(Id, Nombre, HpMax, Atk, Defensa, EnergiaMax, Empatia,
                                    HabilidadAtaque.Clonar(), HabilidadUtilidad.Clonar());
         }
 
+        /// <summary>Triángulo: Tierra gana contra Agua y pierde contra Aire.</summary>
         public override double ObtenerMultiplicador(Elemento enemigo)
         {
-            switch (enemigo)
-            {
-                case Elemento.Agua: return MultiplicadorVentaja;        // Tierra > Agua
-                case Elemento.Aire: return MultiplicadorDesventaja;     // Aire > Tierra
-                default: return MultiplicadorNeutro;
-            }
+            if (enemigo == Elemento.Agua) return MultiplicadorVentaja;
+            if (enemigo == Elemento.Aire) return MultiplicadorDesventaja;
+            return MultiplicadorNeutro;
         }
     }
 }

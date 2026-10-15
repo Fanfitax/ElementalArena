@@ -1,8 +1,9 @@
 namespace ArenaElemental.Modelos
 {
     /// <summary>
-    /// Facción Aire (veloz): fuerte contra Tierra, débil contra Fuego.
-    /// Sus habilidades de utilidad dan energía, potencian el ataque o curan.
+    /// Facción Aire (veloces). Su habilidad de utilidad da energía, potencia el ataque o cura.
+    /// Hereda todo de Personaje; solo escribe lo que es propio de su elemento:
+    /// el triángulo elemental (ObtenerMultiplicador) y la manera de copiarse (CrearCopia).
     /// </summary>
     public class CartaAire : Personaje
     {
@@ -12,20 +13,19 @@ namespace ArenaElemental.Modelos
         {
         }
 
+        /// <summary>Una copia nueva con la vida y la energía llenas (y copias de las habilidades).</summary>
         public override Personaje CrearCopia()
         {
             return new CartaAire(Id, Nombre, HpMax, Atk, Defensa, EnergiaMax, Empatia,
                                  HabilidadAtaque.Clonar(), HabilidadUtilidad.Clonar());
         }
 
+        /// <summary>Triángulo: Aire gana contra Tierra y pierde contra Fuego.</summary>
         public override double ObtenerMultiplicador(Elemento enemigo)
         {
-            switch (enemigo)
-            {
-                case Elemento.Tierra: return MultiplicadorVentaja;      // Aire > Tierra
-                case Elemento.Fuego: return MultiplicadorDesventaja;    // Fuego > Aire
-                default: return MultiplicadorNeutro;
-            }
+            if (enemigo == Elemento.Tierra) return MultiplicadorVentaja;
+            if (enemigo == Elemento.Fuego) return MultiplicadorDesventaja;
+            return MultiplicadorNeutro;
         }
     }
 }

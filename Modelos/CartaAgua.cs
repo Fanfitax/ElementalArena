@@ -1,8 +1,9 @@
 namespace ArenaElemental.Modelos
 {
     /// <summary>
-    /// Facción Agua (apoyo): fuerte contra Fuego, débil contra Tierra.
-    /// Sus habilidades de utilidad curan al equipo.
+    /// Facción Agua (apoyo). Su habilidad de utilidad cura.
+    /// Hereda todo de Personaje; solo escribe lo que es propio de su elemento:
+    /// el triángulo elemental (ObtenerMultiplicador) y la manera de copiarse (CrearCopia).
     /// </summary>
     public class CartaAgua : Personaje
     {
@@ -12,20 +13,19 @@ namespace ArenaElemental.Modelos
         {
         }
 
+        /// <summary>Una copia nueva con la vida y la energía llenas (y copias de las habilidades).</summary>
         public override Personaje CrearCopia()
         {
             return new CartaAgua(Id, Nombre, HpMax, Atk, Defensa, EnergiaMax, Empatia,
                                  HabilidadAtaque.Clonar(), HabilidadUtilidad.Clonar());
         }
 
+        /// <summary>Triángulo: Agua gana contra Fuego y pierde contra Tierra.</summary>
         public override double ObtenerMultiplicador(Elemento enemigo)
         {
-            switch (enemigo)
-            {
-                case Elemento.Fuego: return MultiplicadorVentaja;       // Agua > Fuego
-                case Elemento.Tierra: return MultiplicadorDesventaja;   // Tierra > Agua
-                default: return MultiplicadorNeutro;
-            }
+            if (enemigo == Elemento.Fuego) return MultiplicadorVentaja;
+            if (enemigo == Elemento.Tierra) return MultiplicadorDesventaja;
+            return MultiplicadorNeutro;
         }
     }
 }

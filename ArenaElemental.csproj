@@ -58,6 +58,7 @@
     <Compile Include="Motor\Combate.cs" />
     <Compile Include="Motor\IaRival.cs" />
     <Compile Include="Motor\RedLan.cs" />
+    <Compile Include="Motor\ConfigPartida.cs" />
     <Compile Include="Datos\CatalogoBase.cs" />
     <Compile Include="Datos\EstadisticaPartida.cs" />
     <Compile Include="Datos\RegistroPartidas.cs" />
