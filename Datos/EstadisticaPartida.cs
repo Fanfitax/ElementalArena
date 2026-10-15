@@ -7,6 +7,7 @@ namespace ArenaElemental.Datos
     public class EstadisticaPartida
     {
         public int IdPartida { get; set; }
+        public string Jugador { get; set; }
         public string Equipo { get; set; }
         public string Escenario { get; set; }
         public string Resultado { get; set; }

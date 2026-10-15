@@ -1,62 +1,81 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Motor
 {
     /// <summary>
-    /// Equipo de 3 personajes en una partida. Siempre hay un personaje activo
-    /// y los demás esperan para entrar de relevo.
+    /// Equipo de 3 personajes. Hay un personaje activo (en el campo) y los otros dos
+    /// esperan en una COLA (Queue). Cuando se hace un relevo entra el primero de la cola
+    /// y el que sale se forma al final.
     /// </summary>
     public class EquipoCombate
     {
         public const int TamanoEquipo = 3;
 
-        private readonly List<Personaje> miembros = new List<Personaje>();
-        private int indiceActivo;
+        private List<Personaje> miembros = new List<Personaje>();   // los 3 personajes (para mostrarlos)
+        private Queue<Personaje> banca = new Queue<Personaje>();    // COLA de relevos
+        private Personaje activo;
         private int danoInfligido;
+        private bool ultimaAccionFueRelevo;
 
-        /// <summary>Crea el equipo con COPIAS nuevas de los personajes (el catálogo original no se modifica).</summary>
-        public EquipoCombate(string nombre, IEnumerable<Personaje> personajes, bool esJugador)
+        /// <summary>Crea el equipo con COPIAS de los personajes (así el catálogo original no se modifica).</summary>
+        public EquipoCombate(string nombre, List<Personaje> personajes, bool esJugador)
         {
-            if (string.IsNullOrWhiteSpace(nombre)) throw new ArgumentException("El equipo necesita nombre.", "nombre");
-            if (personajes == null) throw new ArgumentNullException("personajes");
+            if (nombre == null || nombre.Trim().Length == 0)
+                throw new ArgumentException("El equipo necesita nombre.");
+            if (personajes == null || personajes.Count != TamanoEquipo)
+                throw new ArgumentException("El equipo debe tener exactamente " + TamanoEquipo + " personajes.");
 
             foreach (Personaje p in personajes)
             {
-                if (p == null) throw new ArgumentException("El equipo no admite personajes nulos.", "personajes");
                 foreach (Personaje existente in miembros)
                 {
                     if (existente.Id == p.Id)
-                        throw new ArgumentException("El personaje " + p.Nombre + " está repetido en el equipo.", "personajes");
+                        throw new ArgumentException("El personaje " + p.Nombre + " está repetido en el equipo.");
                 }
                 miembros.Add(p.CrearCopia());
             }
-            if (miembros.Count != TamanoEquipo)
-                throw new ArgumentException("El equipo debe tener exactamente " + TamanoEquipo + " personajes.", "personajes");
 
             Nombre = nombre.Trim();
             EsJugador = esJugador;
-            indiceActivo = 0;
+
+            // El primero sale al campo; los demás se forman en la cola en el mismo orden.
+            activo = miembros[0];
+            for (int i = 1; i < miembros.Count; i++)
+                banca.Enqueue(miembros[i]);
         }
 
         public string Nombre { get; private set; }
         public bool EsJugador { get; private set; }
 
-        public ReadOnlyCollection<Personaje> Miembros
+        public List<Personaje> Miembros
         {
-            get { return miembros.AsReadOnly(); }
+            get { return miembros; }
         }
 
-        public int IndiceActivo
-        {
-            get { return indiceActivo; }
-        }
-
+        /// <summary>Personaje que está peleando ahora.</summary>
         public Personaje Activo
         {
-            get { return miembros[indiceActivo]; }
+            get { return activo; }
+        }
+
+        /// <summary>Cantidad de personajes esperando en la cola.</summary>
+        public int CantidadBanca
+        {
+            get { return banca.Count; }
+        }
+
+        /// <summary>El personaje que entraría si se hace un relevo (Peek de la cola). Null si no hay nadie.</summary>
+        public Personaje ProximoRelevo
+        {
+            get { return banca.Count > 0 ? banca.Peek() : null; }
+        }
+
+        /// <summary>Copia del contenido de la cola, en orden, para mostrarla en pantalla.</summary>
+        public Personaje[] ObtenerBanca()
+        {
+            return banca.ToArray();
         }
 
         public int Vivos
@@ -64,7 +83,10 @@ namespace ArenaElemental.Motor
             get
             {
                 int n = 0;
-                foreach (Personaje p in miembros) if (p.EstaVivo) n++;
+                foreach (Personaje p in miembros)
+                {
+                    if (p.EstaVivo) n++;
+                }
                 return n;
             }
         }
@@ -85,8 +107,6 @@ namespace ArenaElemental.Motor
             if (cantidad > 0) danoInfligido += cantidad;
         }
 
-        private bool ultimaAccionFueRelevo;
-
         /// <summary>True si el equipo relevó en su turno anterior (no se puede relevar dos turnos seguidos).</summary>
         public bool RelevoBloqueado
         {
@@ -98,54 +118,29 @@ namespace ArenaElemental.Motor
             ultimaAccionFueRelevo = fueRelevo;
         }
 
-        public bool PuedeRelevarA(int indice)
-        {
-            return indice >= 0 && indice < miembros.Count
-                   && indice != indiceActivo && miembros[indice].EstaVivo;
-        }
-
         public bool HayRelevoDisponible
         {
-            get
-            {
-                for (int i = 0; i < miembros.Count; i++) if (PuedeRelevarA(i)) return true;
-                return false;
-            }
-        }
-
-        /// <summary>Cambia el personaje activo. Devuelve el texto del evento.</summary>
-        public string Relevar(int indice)
-        {
-            if (!PuedeRelevarA(indice))
-                throw new InvalidOperationException("No se puede relevar a esa posición.");
-            Personaje saliente = Activo;
-            saliente.AlSalirDelCampo();
-            indiceActivo = indice;
-            return Activo.AlEntrarEnRelevo(saliente);
+            get { return banca.Count > 0; }
         }
 
         /// <summary>
-        /// Mejor candidato de relevo contra un enemigo (ventaja elemental propia, sin desventaja ajena,
-        /// más vida). Devuelve -1 si no hay ninguno disponible.
+        /// Relevo: sale el activo y entra el primero de la cola (Dequeue).
+        /// Si el que sale sigue vivo, se forma al final de la cola (Enqueue).
+        /// Devuelve el texto del evento.
         /// </summary>
-        public int MejorRelevoContra(Personaje enemigo)
+        public string Relevar()
         {
-            int mejor = -1;
-            double mejorPuntaje = double.MinValue;
-            for (int i = 0; i < miembros.Count; i++)
-            {
-                if (!PuedeRelevarA(i)) continue;
-                Personaje p = miembros[i];
-                double puntaje = p.ObtenerMultiplicador(enemigo.Elemento)
-                                 - enemigo.ObtenerMultiplicador(p.Elemento) * 0.5
-                                 + (double)p.Hp / p.HpMax * 0.25;
-                if (puntaje > mejorPuntaje)
-                {
-                    mejorPuntaje = puntaje;
-                    mejor = i;
-                }
-            }
-            return mejor;
+            if (banca.Count == 0)
+                throw new InvalidOperationException("No hay nadie en la banca para entrar.");
+
+            Personaje saliente = activo;
+            saliente.AlSalirDelCampo();
+
+            activo = banca.Dequeue();
+            if (saliente.EstaVivo)
+                banca.Enqueue(saliente);
+
+            return activo.AlEntrarEnRelevo(saliente);
         }
     }
 }

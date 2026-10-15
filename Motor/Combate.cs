@@ -6,26 +6,26 @@ namespace ArenaElemental.Motor
 {
     /// <summary>
     /// Motor de combate por turnos y relevos entre el equipo del jugador y el rival (CPU).
-    /// No depende de ninguna interfaz gráfica: la UI solo consulta el estado y envía acciones.
-    /// Cada turno el equipo elige UNA acción: Atacar, Habilidad, Relevo o Pasar.
+    /// No usa ninguna interfaz gráfica: los formularios solo consultan el estado y envían acciones.
+    /// Cada turno el equipo elige UNA acción: Atacar, Habilidad, Relevo o Pasar (descansar).
+    /// Todo lo que pasa se guarda en una PILA (Stack) de texto: el historial de jugadas.
     /// </summary>
     public class Combate
     {
-        /// <summary>Energía que recupera el personaje activo al elegir "Pasar" (descansar).</summary>
+        /// <summary>Energía que recupera el personaje activo al descansar.</summary>
         public const int EnergiaAlDescansar = 3;
 
         /// <summary>Ronda a partir de la cual empieza la muerte súbita (+15% de ataque por ronda).</summary>
         public const int TurnoMuerteSubita = 30;
         public const double IncrementoMuerteSubita = 0.15;
 
-        private readonly List<string> registro = new List<string>();
-        private bool relevoForzadoPendiente;
+        // PILA del historial: lo último que pasó queda arriba (Push al agregar, Peek para ver la última).
+        private Stack<string> historial = new Stack<string>();
 
         public Combate(Escenario escenario, EquipoCombate jugador, EquipoCombate rival)
         {
-            if (escenario == null) throw new ArgumentNullException("escenario");
-            if (jugador == null) throw new ArgumentNullException("jugador");
-            if (rival == null) throw new ArgumentNullException("rival");
+            if (escenario == null || jugador == null || rival == null)
+                throw new ArgumentNullException("Faltan datos para crear el combate.");
 
             Escenario = escenario;
             Jugador = jugador;
@@ -44,9 +44,6 @@ namespace ArenaElemental.Motor
             Registrar(Rival.Nombre + " envía a " + Rival.Activo.Nombre + ".");
             PrepararTurno();
         }
-
-        /// <summary>Se dispara por cada línea nueva del registro (para que la UI la muestre).</summary>
-        public event Action<string> MensajeRegistrado;
 
         public Escenario Escenario { get; private set; }
         public EquipoCombate Jugador { get; private set; }
@@ -67,15 +64,16 @@ namespace ArenaElemental.Motor
             get { return !Terminado && EquipoEnTurno == Jugador; }
         }
 
-        /// <summary>True si el personaje activo del jugador cayó y debe elegir quién entra (no gasta turno).</summary>
-        public bool RelevoForzadoPendiente
+        /// <summary>La pila con todo el historial. Al recorrerla con foreach sale primero lo más reciente.</summary>
+        public Stack<string> Historial
         {
-            get { return relevoForzadoPendiente; }
+            get { return historial; }
         }
 
-        public IList<string> Registro
+        /// <summary>Última jugada registrada (Peek de la pila).</summary>
+        public string UltimaJugada
         {
-            get { return registro.AsReadOnly(); }
+            get { return historial.Count > 0 ? historial.Peek() : string.Empty; }
         }
 
         public EquipoCombate Oponente(EquipoCombate equipo)
@@ -90,7 +88,6 @@ namespace ArenaElemental.Motor
             motivo = null;
             if (accion == null) { motivo = "Acción nula."; return false; }
             if (Terminado) { motivo = "El combate ya terminó."; return false; }
-            if (relevoForzadoPendiente) { motivo = "Debes elegir qué personaje entra al campo."; return false; }
 
             EquipoCombate equipo = EquipoEnTurno;
             Personaje activo = equipo.Activo;
@@ -126,9 +123,9 @@ namespace ArenaElemental.Motor
                         motivo = "No se puede relevar dos turnos seguidos.";
                         return false;
                     }
-                    if (!equipo.PuedeRelevarA(accion.Indice))
+                    if (!equipo.HayRelevoDisponible)
                     {
-                        motivo = "No se puede relevar a ese personaje.";
+                        motivo = "No queda nadie en la banca.";
                         return false;
                     }
                     return true;
@@ -141,7 +138,7 @@ namespace ArenaElemental.Motor
 
         // ---------- Ejecución ----------
 
-        /// <summary>Ejecuta la acción del equipo en turno y pasa el turno. Lanza InvalidOperationException si no es válida.</summary>
+        /// <summary>Ejecuta la acción del equipo en turno y pasa el turno.</summary>
         public void Ejecutar(AccionCombate accion)
         {
             string motivo;
@@ -180,7 +177,7 @@ namespace ArenaElemental.Motor
                         break;
                     }
                 case TipoAccion.Relevo:
-                    Registrar(propio.Relevar(accion.Indice));
+                    Registrar(propio.Relevar());
                     break;
 
                 case TipoAccion.Pasar:
@@ -192,26 +189,14 @@ namespace ArenaElemental.Motor
             }
 
             propio.RegistrarAccionDelTurno(accion.Tipo == TipoAccion.Relevo);
-            ResolverDerrota(contrario, propio);
+            ResolverDerrota(contrario);
             if (!Terminado) AvanzarTurno();
         }
 
-        /// <summary>El jugador elige quién entra tras caer su personaje activo. No consume turno.</summary>
-        public void ElegirRelevoForzado(int indice)
-        {
-            if (!relevoForzadoPendiente)
-                throw new InvalidOperationException("No hay un relevo pendiente.");
-            if (!Jugador.PuedeRelevarA(indice))
-                throw new InvalidOperationException("No se puede relevar a ese personaje.");
+        // ---------- Métodos internos ----------
 
-            Registrar(Jugador.Relevar(indice));
-            relevoForzadoPendiente = false;
-            PrepararTurno();
-        }
-
-        // ---------- Internos ----------
-
-        private void ResolverDerrota(EquipoCombate defensor, EquipoCombate atacante)
+        /// <summary>Si el personaje activo del defensor cayó, entra el siguiente de la cola (sin gastar turno).</summary>
+        private void ResolverDerrota(EquipoCombate defensor)
         {
             Personaje caido = defensor.Activo;
             if (caido.EstaVivo) return;
@@ -228,15 +213,7 @@ namespace ArenaElemental.Motor
                 return;
             }
 
-            if (defensor.EsJugador)
-            {
-                relevoForzadoPendiente = true;
-            }
-            else
-            {
-                int siguiente = defensor.MejorRelevoContra(atacante.Activo);
-                Registrar(defensor.Relevar(siguiente));
-            }
+            Registrar(defensor.Relevar());
         }
 
         private void AvanzarTurno()
@@ -247,10 +224,10 @@ namespace ArenaElemental.Motor
                 Turno++;
                 AplicarMuerteSubita();
             }
-            if (!relevoForzadoPendiente) PrepararTurno();
+            PrepararTurno();
         }
 
-        /// <summary>Pasada la ronda TurnoMuerteSubita, el ataque de todos crece cada ronda para evitar combates eternos.</summary>
+        /// <summary>Pasada la ronda TurnoMuerteSubita, el ataque de todos crece cada ronda para que el combate termine.</summary>
         private void AplicarMuerteSubita()
         {
             if (Turno <= TurnoMuerteSubita) return;
@@ -270,9 +247,7 @@ namespace ArenaElemental.Motor
 
         private void Registrar(string mensaje)
         {
-            registro.Add(mensaje);
-            Action<string> manejador = MensajeRegistrado;
-            if (manejador != null) manejador(mensaje);
+            historial.Push(mensaje);
         }
     }
 }

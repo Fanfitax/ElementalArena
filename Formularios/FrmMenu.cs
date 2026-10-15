@@ -8,16 +8,14 @@ using ArenaElemental.Motor;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>Menú principal: identifica al jugador y lanza partidas o estadísticas.</summary>
+    /// <summary>Menú principal: pide el nombre del jugador y lanza una partida o las estadísticas.</summary>
     public class FrmMenu : Form
     {
-        private readonly IRepositorio repo;
-        private readonly Random azar = new Random();
+        private Random azar = new Random();
         private TextBox txtJugador;
 
-        public FrmMenu(IRepositorio repo)
+        public FrmMenu()
         {
-            this.repo = repo;
             Estilo.AplicarFormulario(this, "Arena Elemental", 480, 440);
 
             Label titulo = Estilo.CrearEtiqueta("ARENA ELEMENTAL", 0, 24, 480, 44, 24f, true);
@@ -51,113 +49,69 @@ namespace ArenaElemental.Formularios
             btnSalir.Click += delegate { Close(); };
             Controls.Add(btnSalir);
 
-            Label modo = Estilo.CrearEtiqueta(repo.Descripcion, 16, 392, 448, 36, 8.5f, false);
-            modo.ForeColor = Estilo.TextoSuave;
-            modo.TextAlign = ContentAlignment.MiddleCenter;
-            Controls.Add(modo);
+            Label nota = Estilo.CrearEtiqueta("Las estadísticas se guardan solo mientras el programa esté abierto.", 16, 392, 448, 36, 8.5f, false);
+            nota.ForeColor = Estilo.TextoSuave;
+            nota.TextAlign = ContentAlignment.MiddleCenter;
+            Controls.Add(nota);
 
             AcceptButton = btnJugar;
         }
 
-        /// <summary>Valida el nombre y devuelve el id del jugador (null si hubo un problema).</summary>
-        private int? ObtenerJugador(out string nombre)
+        /// <summary>Devuelve el nombre escrito, o null si está vacío.</summary>
+        private string LeerNombre()
         {
-            nombre = txtJugador.Text.Trim();
+            string nombre = txtJugador.Text.Trim();
             if (nombre.Length == 0)
             {
                 MessageBox.Show("Escribe tu nombre de jugador.", "Falta el nombre", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 txtJugador.Focus();
                 return null;
             }
-            try
-            {
-                return repo.ObtenerOCrearJugador(nombre);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("No se pudo registrar al jugador:\n" + ex.Message, "Base de datos",
-                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return null;
-            }
+            return nombre;
         }
 
         private void NuevaPartida()
         {
-            string nombre;
-            int? idJugador = ObtenerJugador(out nombre);
-            if (idJugador == null) return;
+            string nombre = LeerNombre();
+            if (nombre == null) return;
 
-            IList<Personaje> catalogo;
-            IList<Escenario> escenarios;
-            try
-            {
-                catalogo = repo.ObtenerPersonajes();
-                escenarios = repo.ObtenerEscenarios();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("No se pudo cargar el catálogo:\n" + ex.Message, "Base de datos",
-                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            using (FrmSeleccionEquipo seleccion = new FrmSeleccionEquipo(catalogo, escenarios, nombre))
+            using (FrmSeleccionEquipo seleccion = new FrmSeleccionEquipo(CatalogoBase.Personajes, CatalogoBase.Escenarios, nombre))
             {
                 if (seleccion.ShowDialog(this) != DialogResult.OK) return;
 
-                int idEquipo;
-                try
-                {
-                    idEquipo = repo.GuardarEquipo(idJugador.Value, seleccion.NombreEquipo, seleccion.EquipoElegido);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("No se pudo guardar el equipo:\n" + ex.Message, "Base de datos",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
                 EquipoCombate propio = new EquipoCombate(seleccion.NombreEquipo, seleccion.EquipoElegido, true);
-                EquipoCombate rival = new EquipoCombate("Rival CPU", SortearRival(catalogo), false);
+                EquipoCombate rival = new EquipoCombate("Rival CPU", SortearRival(), false);
                 Combate combate = new Combate(seleccion.EscenarioElegido, propio, rival);
 
-                using (FrmCombate frm = new FrmCombate(repo, idJugador.Value, idEquipo, combate))
+                using (FrmCombate frm = new FrmCombate(nombre, combate))
                 {
                     frm.ShowDialog(this);
                 }
             }
         }
 
-        private List<Personaje> SortearRival(IList<Personaje> catalogo)
+        /// <summary>Elige 3 personajes distintos al azar para el equipo de la CPU.</summary>
+        private List<Personaje> SortearRival()
         {
-            List<Personaje> pool = new List<Personaje>(catalogo);
+            List<Personaje> disponibles = new List<Personaje>(CatalogoBase.Personajes);
             List<Personaje> elegidos = new List<Personaje>();
             for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
             {
-                int k = azar.Next(pool.Count);
-                elegidos.Add(pool[k]);
-                pool.RemoveAt(k);
+                int k = azar.Next(disponibles.Count);
+                elegidos.Add(disponibles[k]);
+                disponibles.RemoveAt(k);
             }
             return elegidos;
         }
 
         private void VerEstadisticas()
         {
-            string nombre;
-            int? idJugador = ObtenerJugador(out nombre);
-            if (idJugador == null) return;
-            try
+            string nombre = LeerNombre();
+            if (nombre == null) return;
+
+            using (FrmEstadisticas frm = new FrmEstadisticas(nombre, RegistroPartidas.DeJugador(nombre)))
             {
-                IList<EstadisticaPartida> partidas = repo.ObtenerPartidas(idJugador.Value);
-                using (FrmEstadisticas frm = new FrmEstadisticas(nombre, partidas))
-                {
-                    frm.ShowDialog(this);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("No se pudieron cargar las estadísticas:\n" + ex.Message, "Base de datos",
-                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                frm.ShowDialog(this);
             }
         }
     }

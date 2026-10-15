@@ -7,47 +7,40 @@ using ArenaElemental.Motor;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>Pantalla de combate por turnos y relevos contra el rival controlado por la CPU.</summary>
+    /// <summary>
+    /// Pantalla de combate. Muestra la COLA (Queue) de relevos de cada equipo y el
+    /// historial de jugadas guardado en una PILA (Stack), cada uno en un ListBox.
+    /// </summary>
     public class FrmCombate : Form
     {
         private const int RetardoCpuMs = 900;
 
-        private readonly IRepositorio repo;
-        private readonly int idJugador;
-        private readonly int idEquipo;
-        private readonly Combate combate;
-        private readonly IaRival ia = new IaRival();
+        private string nombreJugador;
+        private Combate combate;
+        private IaRival ia = new IaRival();
 
-        private readonly TarjetaPersonaje[] tarjetasJugador = new TarjetaPersonaje[EquipoCombate.TamanoEquipo];
-        private readonly TarjetaPersonaje[] tarjetasRival = new TarjetaPersonaje[EquipoCombate.TamanoEquipo];
-        private readonly Button[] botonesRelevo = new Button[EquipoCombate.TamanoEquipo];
+        private TarjetaPersonaje[] tarjetasJugador = new TarjetaPersonaje[EquipoCombate.TamanoEquipo];
+        private TarjetaPersonaje[] tarjetasRival = new TarjetaPersonaje[EquipoCombate.TamanoEquipo];
 
-        private Label lblTitulo, lblInstruccion;
-        private Button btnAtacar, btnHabilidad, btnDescansar, btnRendirse;
-        private RichTextBox txtLog;
+        private Label lblTitulo, lblInstruccion, lblUltimaJugada;
+        private Button btnAtacar, btnHabilidad, btnDescansar, btnRelevo, btnRendirse;
+        private ListBox lstBancaJugador, lstBancaRival, lstHistorial;
         private ContextMenuStrip menuAliados;
         private Timer timerCpu;
         private bool partidaGuardada;
 
-        public FrmCombate(IRepositorio repo, int idJugador, int idEquipo, Combate combate)
+        public FrmCombate(string nombreJugador, Combate combate)
         {
-            this.repo = repo;
-            this.idJugador = idJugador;
-            this.idEquipo = idEquipo;
+            this.nombreJugador = nombreJugador;
             this.combate = combate;
 
             ConstruirInterfaz();
-
-            foreach (string linea in combate.Registro) AgregarLog(linea);
-            combate.MensajeRegistrado += AgregarLog;
 
             timerCpu = new Timer();
             timerCpu.Interval = RetardoCpuMs;
             timerCpu.Tick += TimerCpu_Tick;
 
             Refrescar();
-            // Por si el rival empezara (no ocurre ahora, pero mantiene el flujo uniforme).
-            if (!combate.EsTurnoDelJugador && !combate.Terminado) timerCpu.Start();
         }
 
         // ---------- Construcción de la interfaz ----------
@@ -94,37 +87,49 @@ namespace ArenaElemental.Formularios
             btnDescansar.Click += delegate { EjecutarJugador(AccionCombate.Pasar()); };
             Controls.Add(btnDescansar);
 
-            Controls.Add(Estilo.CrearEtiqueta("RELEVO", 362, 256, 290, 22, 10.5f, true));
-            for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
-            {
-                int indice = i;   // captura para el delegado
-                Button b = Estilo.CrearBoton(string.Empty, 362, 282 + i * 42, 290, 36);
-                b.BackColor = Color.FromArgb(46, 120, 160);
-                b.Click += delegate { ClickRelevo(indice); };
-                botonesRelevo[i] = b;
-                Controls.Add(b);
-            }
+            btnRelevo = Estilo.CrearBoton("Relevo", 362, 252, 290, 40);
+            btnRelevo.BackColor = Color.FromArgb(46, 120, 160);
+            btnRelevo.Click += delegate { EjecutarJugador(AccionCombate.Relevar()); };
+            Controls.Add(btnRelevo);
 
-            btnRendirse = Estilo.CrearBoton("Rendirse", 362, 412, 290, 28);
+            Controls.Add(Estilo.CrearEtiqueta("Última jugada (Peek de la pila):", 362, 304, 290, 20, 9f, true));
+            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 362, 324, 290, 66, 9.5f, false);
+            lblUltimaJugada.ForeColor = Estilo.TextoSuave;
+            Controls.Add(lblUltimaJugada);
+
+            btnRendirse = Estilo.CrearBoton("Rendirse", 362, 400, 290, 28);
             btnRendirse.BackColor = Color.FromArgb(150, 50, 50);
             btnRendirse.Click += delegate { Close(); };
             Controls.Add(btnRendirse);
 
             Label reglas = Estilo.CrearEtiqueta(
                 "Triángulo: " + Estilo.Triangulo + "\nNo se puede relevar dos turnos seguidos.\nRonda " + Combate.TurnoMuerteSubita + ": muerte súbita.",
-                362, 448, 290, 60, 8.5f, false);
+                362, 440, 290, 60, 8.5f, false);
             reglas.ForeColor = Estilo.TextoSuave;
             Controls.Add(reglas);
 
-            txtLog = new RichTextBox();
-            txtLog.SetBounds(16, 516, 978, 168);
-            txtLog.ReadOnly = true;
-            txtLog.BackColor = Color.FromArgb(16, 17, 28);
-            txtLog.ForeColor = Estilo.Texto;
-            txtLog.BorderStyle = BorderStyle.None;
-            txtLog.Font = new Font("Consolas", 9.5f);
-            txtLog.DetectUrls = false;
-            Controls.Add(txtLog);
+            // Parte de abajo: dos colas (banca de cada equipo) y la pila del historial.
+            Controls.Add(Estilo.CrearEtiqueta("MI BANCA (cola de relevo)", 16, 512, 230, 22, 9.5f, true));
+            lstBancaJugador = CrearLista(16, 536, 230, 148);
+
+            Controls.Add(Estilo.CrearEtiqueta("BANCA RIVAL (cola)", 256, 512, 230, 22, 9.5f, true));
+            lstBancaRival = CrearLista(256, 536, 230, 148);
+
+            Controls.Add(Estilo.CrearEtiqueta("HISTORIAL DE JUGADAS (pila: lo último arriba)", 496, 512, 498, 22, 9.5f, true));
+            lstHistorial = CrearLista(496, 536, 498, 148);
+        }
+
+        private ListBox CrearLista(int x, int y, int ancho, int alto)
+        {
+            ListBox lista = new ListBox();
+            lista.SetBounds(x, y, ancho, alto);
+            lista.BackColor = Color.FromArgb(16, 17, 28);
+            lista.ForeColor = Estilo.Texto;
+            lista.BorderStyle = BorderStyle.None;
+            lista.Font = new Font("Consolas", 9.5f);
+            lista.HorizontalScrollbar = true;
+            Controls.Add(lista);
+            return lista;
         }
 
         // ---------- Acciones del jugador ----------
@@ -132,13 +137,13 @@ namespace ArenaElemental.Formularios
         private void BtnHabilidad_Click(object sender, EventArgs e)
         {
             Personaje activo = combate.Jugador.Activo;
-            if (activo.HabilidadEsOfensiva || !(activo is CartaAgua))
+            if (!(activo is CartaAgua))
             {
                 EjecutarJugador(AccionCombate.Habilidad());
                 return;
             }
 
-            // Habilidad de apoyo con objetivo: elegir a quién curar.
+            // La habilidad del Agua cura: se elige a qué aliado.
             menuAliados.Items.Clear();
             for (int i = 0; i < combate.Jugador.Miembros.Count; i++)
             {
@@ -152,25 +157,6 @@ namespace ArenaElemental.Formularios
                 menuAliados.Items.Add(item);
             }
             menuAliados.Show(btnHabilidad, new Point(0, btnHabilidad.Height));
-        }
-
-        private void ClickRelevo(int indice)
-        {
-            if (combate.RelevoForzadoPendiente)
-            {
-                try
-                {
-                    combate.ElegirRelevoForzado(indice);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    MessageBox.Show(ex.Message, "Relevo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-                Refrescar();
-                ProcesarSiguiente();
-                return;
-            }
-            EjecutarJugador(AccionCombate.Relevar(indice));
         }
 
         private void EjecutarJugador(AccionCombate accion)
@@ -191,13 +177,9 @@ namespace ArenaElemental.Formularios
         private void ProcesarSiguiente()
         {
             if (combate.Terminado)
-            {
                 FinalizarPartida();
-            }
             else if (!combate.EsTurnoDelJugador)
-            {
                 timerCpu.Start();
-            }
         }
 
         private void TimerCpu_Tick(object sender, EventArgs e)
@@ -229,16 +211,8 @@ namespace ArenaElemental.Formularios
         {
             if (partidaGuardada) return;
             partidaGuardada = true;
-            try
-            {
-                repo.GuardarPartida(idJugador, idEquipo, combate.Escenario.Id, resultado,
-                                    combate.Turno, combate.Jugador.DanoInfligido);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("No se pudo guardar la estadística de la partida:\n" + ex.Message,
-                                "Base de datos", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            RegistroPartidas.Agregar(nombreJugador, combate.Jugador.Nombre, combate.Escenario.Nombre,
+                                     resultado, combate.Turno, combate.Jugador.DanoInfligido);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -274,64 +248,63 @@ namespace ArenaElemental.Formularios
         {
             for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
             {
-                tarjetasJugador[i].Actualizar(combate.Jugador.Miembros[i], i == combate.Jugador.IndiceActivo);
-                tarjetasRival[i].Actualizar(combate.Rival.Miembros[i], i == combate.Rival.IndiceActivo);
+                Personaje propio = combate.Jugador.Miembros[i];
+                Personaje rival = combate.Rival.Miembros[i];
+                tarjetasJugador[i].Actualizar(propio, propio == combate.Jugador.Activo);
+                tarjetasRival[i].Actualizar(rival, rival == combate.Rival.Activo);
             }
 
             bool turnoJugador = combate.EsTurnoDelJugador;
-            bool forzado = combate.RelevoForzadoPendiente;
             Personaje activo = combate.Jugador.Activo;
-            bool libre = turnoJugador && !forzado;
 
             lblTitulo.Text = combate.Escenario.Nombre + "   ·   Ronda " + combate.Turno;
 
             if (combate.Terminado) lblInstruccion.Text = "El combate terminó.";
-            else if (forzado) lblInstruccion.Text = "Tu personaje cayó. Elige quién entra al campo (no gasta turno).";
             else if (turnoJugador) lblInstruccion.Text = "Tu turno: " + activo.Nombre + ". Elige una acción.";
             else lblInstruccion.Text = "Turno del rival...";
 
-            btnAtacar.Enabled = libre;
-            btnDescansar.Enabled = libre;
-
             string motivo;
+            btnAtacar.Enabled = turnoJugador;
+            btnDescansar.Enabled = turnoJugador;
+
             btnHabilidad.Text = activo.NombreHabilidad + "  (" + activo.CostoHabilidad + " ENG"
                                 + (activo.CooldownActual > 0 ? ", recarga " + activo.CooldownActual : string.Empty) + ")";
-            btnHabilidad.Enabled = libre && combate.PuedeEjecutar(AccionCombate.Habilidad(), out motivo);
+            btnHabilidad.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Habilidad(), out motivo);
 
-            for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
-            {
-                Personaje p = combate.Jugador.Miembros[i];
-                Button b = botonesRelevo[i];
-                if (i == combate.Jugador.IndiceActivo)
-                {
-                    b.Text = "En campo: " + p.Nombre;
-                    b.Enabled = false;
-                }
-                else
-                {
-                    b.Text = p.EstaVivo ? "Relevo: " + p.Nombre + " (" + p.Hp + " HP)" : p.Nombre + " (derrotado)";
-                    if (forzado) b.Enabled = combate.Jugador.PuedeRelevarA(i);
-                    else b.Enabled = libre && combate.PuedeEjecutar(AccionCombate.Relevar(i), out motivo);
-                }
-            }
+            Personaje siguiente = combate.Jugador.ProximoRelevo;
+            btnRelevo.Text = siguiente == null ? "Relevo (banca vacía)" : "Relevo: entra " + siguiente.Nombre;
+            btnRelevo.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Relevar(), out motivo);
 
             btnRendirse.Enabled = !combate.Terminado;
+
+            LlenarBanca(lstBancaJugador, combate.Jugador);
+            LlenarBanca(lstBancaRival, combate.Rival);
+            LlenarHistorial();
         }
 
-        private void AgregarLog(string mensaje)
+        /// <summary>Muestra la cola de un equipo en un ListBox: el primero de la lista es el próximo en entrar.</summary>
+        private void LlenarBanca(ListBox lista, EquipoCombate equipo)
         {
-            Color color = Estilo.Texto;
-            if (mensaje.StartsWith("—")) color = Estilo.TextoSuave;
-            else if (mensaje.Contains("derrotado") || mensaje.Contains("Derrota")) color = Color.IndianRed;
-            else if (mensaje.Contains("Victoria") || mensaje.Contains("MUERTE")) color = Color.Gold;
-            else if (mensaje.Contains("cura")) color = Color.LightGreen;
+            lista.Items.Clear();
+            int posicion = 1;
+            foreach (Personaje p in equipo.ObtenerBanca())
+            {
+                lista.Items.Add(posicion + ". " + p.Nombre + " [" + p.Elemento + "] " + p.Hp + "/" + p.HpMax + " HP");
+                posicion++;
+            }
+            if (lista.Items.Count == 0) lista.Items.Add("(banca vacía)");
+        }
 
-            txtLog.SelectionStart = txtLog.TextLength;
-            txtLog.SelectionLength = 0;
-            txtLog.SelectionColor = color;
-            txtLog.AppendText(mensaje + "\n");
-            txtLog.SelectionStart = txtLog.TextLength;
-            txtLog.ScrollToCaret();
+        /// <summary>Muestra la pila del historial en un ListBox (la jugada más reciente queda arriba).</summary>
+        private void LlenarHistorial()
+        {
+            lstHistorial.BeginUpdate();
+            lstHistorial.Items.Clear();
+            foreach (string jugada in combate.Historial)
+                lstHistorial.Items.Add(jugada);
+            lstHistorial.EndUpdate();
+
+            lblUltimaJugada.Text = combate.UltimaJugada;
         }
     }
 }

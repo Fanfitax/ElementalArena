@@ -4,28 +4,16 @@ using ArenaElemental.Modelos;
 namespace ArenaElemental.Motor
 {
     /// <summary>
-    /// Inteligencia simple del rival: relevo si está en desventaja elemental, usa su habilidad cuando
-    /// conviene, cura al aliado más herido y descansa si le falta energía.
+    /// Inteligencia simple del rival (CPU): releva si está en desventaja elemental, usa su
+    /// habilidad cuando conviene, cura al aliado más herido y descansa si le falta energía.
     /// </summary>
     public class IaRival
     {
-        private readonly Random azar;
-
-        public IaRival()
-        {
-            azar = new Random();
-        }
-
-        public IaRival(int semilla)
-        {
-            azar = new Random(semilla);
-        }
+        private Random azar = new Random();
 
         /// <summary>Decide una acción VÁLIDA para el equipo que tiene el turno en el combate.</summary>
         public AccionCombate Decidir(Combate combate)
         {
-            if (combate == null) throw new ArgumentNullException("combate");
-
             EquipoCombate yo = combate.EquipoEnTurno;
             EquipoCombate otro = combate.Oponente(yo);
             Personaje a = yo.Activo;
@@ -33,16 +21,18 @@ namespace ArenaElemental.Motor
 
             double miMult = a.ObtenerMultiplicador(e.Elemento);
             double suMult = e.ObtenerMultiplicador(a.Elemento);
-            int relevo = yo.RelevoBloqueado ? -1 : yo.MejorRelevoContra(e);
 
-            // 1) Relevo táctico si está en desventaja y hay un candidato mejor.
-            if (relevo >= 0 && suMult > 1.0 && miMult <= 1.0
-                && yo.Miembros[relevo].ObtenerMultiplicador(e.Elemento) > miMult && Probabilidad(55))
-                return AccionCombate.Relevar(relevo);
+            // El relevo es posible si no relevó en el turno anterior y hay alguien en la cola.
+            bool puedeRelevar = !yo.RelevoBloqueado && yo.HayRelevoDisponible;
+
+            // 1) Relevo táctico: está en desventaja y el que sigue en la cola es mejor contra el enemigo.
+            if (puedeRelevar && suMult > 1.0 && miMult <= 1.0
+                && yo.ProximoRelevo.ObtenerMultiplicador(e.Elemento) > miMult && Probabilidad(55))
+                return AccionCombate.Relevar();
 
             // 2) Relevo de emergencia con poca vida.
-            if (relevo >= 0 && a.Hp < a.HpMax * 0.25 && Probabilidad(35))
-                return AccionCombate.Relevar(relevo);
+            if (puedeRelevar && a.Hp < a.HpMax * 0.25 && Probabilidad(35))
+                return AccionCombate.Relevar();
 
             // 3) Habilidad especial.
             if (a.PuedeUsarHabilidad())
@@ -80,7 +70,8 @@ namespace ArenaElemental.Motor
             return azar.Next(100) < porcentaje;
         }
 
-        private static int IndiceMasHerido(EquipoCombate equipo)
+        /// <summary>Posición (en la lista de miembros) del aliado vivo al que más vida le falta. -1 si nadie está herido.</summary>
+        private int IndiceMasHerido(EquipoCombate equipo)
         {
             int indice = -1;
             int mayorFaltante = 0;

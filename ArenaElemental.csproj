@@ -39,7 +39,6 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
@@ -53,17 +52,13 @@
     <Compile Include="Modelos\CartaTierra.cs" />
     <Compile Include="Modelos\CartaAire.cs" />
     <Compile Include="Modelos\Escenario.cs" />
-    <Compile Include="Modelos\FabricaPersonajes.cs" />
     <Compile Include="Motor\AccionCombate.cs" />
     <Compile Include="Motor\EquipoCombate.cs" />
     <Compile Include="Motor\Combate.cs" />
     <Compile Include="Motor\IaRival.cs" />
-    <Compile Include="Datos\ConfiguracionBD.cs" />
     <Compile Include="Datos\CatalogoBase.cs" />
     <Compile Include="Datos\EstadisticaPartida.cs" />
-    <Compile Include="Datos\IRepositorio.cs" />
-    <Compile Include="Datos\RepositorioMemoria.cs" />
-    <Compile Include="Datos\RepositorioSql.cs" />
+    <Compile Include="Datos\RegistroPartidas.cs" />
     <Compile Include="Formularios\Estilo.cs" />
     <Compile Include="Formularios\TarjetaPersonaje.cs" />
     <Compile Include="Formularios\FrmMenu.cs" />
