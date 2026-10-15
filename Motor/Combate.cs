@@ -19,20 +19,32 @@ namespace ArenaElemental.Motor
         public const int TurnoMuerteSubita = 30;
         public const double IncrementoMuerteSubita = 0.15;
 
-        /// <summary>Cada cuántas rondas ocurre el Terremoto (rondas 4, 8, 12...).</summary>
-        public const int RondasEntreTerremotos = 4;
+        /// <summary>Probabilidad (en %) de que ocurra un Terremoto al empezar cada ronda.</summary>
+        public const int ProbabilidadTerremoto = 25;
 
-        /// <summary>El Terremoto quita este porcentaje de la vida máxima a los dos personajes en el campo.</summary>
-        public const int PorcentajeDanoTerremoto = 10;
+        /// <summary>El daño del Terremoto nunca supera este porcentaje de la vida máxima del personaje (el "límite").</summary>
+        public const int LimiteTerremotoPct = 20;
 
         // PILA del historial: lo último que pasó queda arriba (Push al agregar, Peek para ver la última).
         private Stack<string> historial = new Stack<string>();
 
+        // Números al azar del combate (solo se usa para decidir si hay Terremoto). Con la misma semilla dos
+        // combates idénticos dan exactamente los mismos resultados: así se sincronizan dos PCs en el modo LAN.
+        private Random azar;
+        private bool terremotoEstaRonda;
+
         public Combate(Escenario escenario, EquipoCombate jugador, EquipoCombate rival)
+            : this(escenario, jugador, rival, new Random().Next())
+        {
+        }
+
+        public Combate(Escenario escenario, EquipoCombate jugador, EquipoCombate rival, int semilla)
         {
             if (escenario == null || jugador == null || rival == null)
                 throw new ArgumentNullException("Faltan datos para crear el combate.");
 
+            Semilla = semilla;
+            azar = new Random(semilla);
             Escenario = escenario;
             Jugador = jugador;
             Rival = rival;
@@ -56,6 +68,9 @@ namespace ArenaElemental.Motor
         public EquipoCombate Rival { get; private set; }
         public EquipoCombate EquipoEnTurno { get; private set; }
         public EstadoCombate Estado { get; private set; }
+
+        /// <summary>Semilla de los números al azar: dos combates con la misma semilla y las mismas jugadas son idénticos.</summary>
+        public int Semilla { get; private set; }
 
         /// <summary>Número de ronda (aumenta cada vez que vuelve a jugar el jugador).</summary>
         public int Turno { get; private set; }
@@ -85,14 +100,38 @@ namespace ArenaElemental.Motor
         /// <summary>True si en la ronda actual ocurrió el Terremoto.</summary>
         public bool TerremotoEstaRonda
         {
-            get { return Turno % RondasEntreTerremotos == 0; }
+            get { return terremotoEstaRonda; }
         }
 
-        /// <summary>Cuántas rondas faltan para el próximo Terremoto (el de esta ronda no cuenta).</summary>
-        public int RondasParaTerremoto
+        // ---------- Terremoto: vínculo con Cálculo 1 ----------
+        // Función base:  f(t) = 2t² + 5t        (t = número de ronda)
+        // Su derivada:   f'(t) = 4t + 5         (la rapidez con que crece f)
+        // Daño = Min(f'(t), límite), con límite = 20% de la vida máxima, para que no desbalancee la partida.
+
+        /// <summary>f(t) = 2t² + 5t</summary>
+        public static int FuncionTerremoto(int t)
         {
-            get { return RondasEntreTerremotos - (Turno % RondasEntreTerremotos); }
+            return 2 * t * t + 5 * t;
         }
+
+        /// <summary>f'(t) = 4t + 5, la derivada de f(t) = 2t² + 5t.</summary>
+        public static int DerivadaTerremoto(int t)
+        {
+            return 4 * t + 5;
+        }
+
+        /// <summary>Daño del Terremoto en la ronda t para un personaje con esa vida máxima: Min(f'(t), 20% de la vida máxima).</summary>
+        public static int DanoDelTerremoto(int t, int hpMax)
+        {
+            int limite = hpMax * LimiteTerremotoPct / 100;
+            return Math.Min(DerivadaTerremoto(t), limite);
+        }
+
+        /// <summary>HP que le quitó el Terremoto al activo del jugador en la última jugada (0 si no hubo Terremoto).</summary>
+        public int DanoTerremotoJugador { get; private set; }
+
+        /// <summary>HP que le quitó el Terremoto al activo del rival en la última jugada (0 si no hubo Terremoto).</summary>
+        public int DanoTerremotoRival { get; private set; }
 
         public EquipoCombate Oponente(EquipoCombate equipo)
         {
@@ -168,6 +207,9 @@ namespace ArenaElemental.Motor
             string motivo;
             if (!PuedeEjecutar(accion, out motivo))
                 throw new InvalidOperationException(motivo);
+
+            DanoTerremotoJugador = 0;
+            DanoTerremotoRival = 0;
 
             EquipoCombate propio = EquipoEnTurno;
             EquipoCombate contrario = Oponente(propio);
@@ -250,33 +292,41 @@ namespace ArenaElemental.Motor
             {
                 Turno++;
                 AplicarMuerteSubita();
-                if (TerremotoEstaRonda) ProvocarTerremoto();
+
+                // Cada ronda nueva hay un 25% de probabilidad de Terremoto.
+                terremotoEstaRonda = azar.Next(100) < ProbabilidadTerremoto;
+                if (terremotoEstaRonda) ProvocarTerremoto();
             }
             PrepararTurno();
         }
 
         /// <summary>
-        /// Evento automático: cada RondasEntreTerremotos rondas la tierra tiembla y los dos personajes
-        /// que están en el campo pierden el 10% de su vida máxima. Nunca los deja por debajo de 1 HP
-        /// (así el Terremoto no elimina a nadie). Cada efecto se guarda en la pila del historial.
+        /// Evento aleatorio (25% por ronda): la tierra tiembla y los dos personajes en el campo pierden vida.
+        /// El daño sale de la derivada f'(t) = 4t + 5 acotada por el límite (20% de la vida máxima de cada uno).
+        /// Nunca deja a nadie por debajo de 1 HP (así el Terremoto no elimina a nadie). La fórmula usada queda
+        /// registrada en la pila del historial.
         /// </summary>
         private void ProvocarTerremoto()
         {
-            Registrar("¡TERREMOTO! El suelo tiembla en " + Escenario.Nombre + " (ronda " + Turno + ").");
-            AplicarDanoTerremoto(Jugador.Activo);
-            AplicarDanoTerremoto(Rival.Activo);
+            Registrar("¡TERREMOTO! en " + Escenario.Nombre + ": f(t) = 2t² + 5t, f'(t) = 4t + 5, con t = " + Turno
+                      + " => f'(" + Turno + ") = " + DerivadaTerremoto(Turno) + ".");
+            DanoTerremotoJugador = AplicarDanoTerremoto(Jugador.Activo);
+            DanoTerremotoRival = AplicarDanoTerremoto(Rival.Activo);
         }
 
-        private void AplicarDanoTerremoto(Personaje p)
+        /// <summary>Quita la vida del Terremoto y devuelve cuánto HP perdió realmente el personaje.</summary>
+        private int AplicarDanoTerremoto(Personaje p)
         {
-            int dano = p.HpMax * PorcentajeDanoTerremoto / 100;
+            int limite = p.HpMax * LimiteTerremotoPct / 100;
+            int dano = DanoDelTerremoto(Turno, p.HpMax);
             if (dano < 1) dano = 1;
             if (dano > p.Hp - 1) dano = p.Hp - 1;   // siempre queda al menos 1 HP
 
             int aplicado = p.RecibirDano(dano);
-            Registrar("   " + p.Nombre + " pierde " + aplicado + " HP (" + p.Hp + "/" + p.HpMax + ").");
+            Registrar("   " + p.Nombre + ": Min(f'(t) = " + DerivadaTerremoto(Turno) + ", límite = " + limite
+                      + ") => Daño: " + aplicado + " (" + p.Hp + "/" + p.HpMax + " HP).");
+            return aplicado;
         }
-
         /// <summary>Pasada la ronda TurnoMuerteSubita, el ataque de todos crece cada ronda para que el combate termine.</summary>
         private void AplicarMuerteSubita()
         {

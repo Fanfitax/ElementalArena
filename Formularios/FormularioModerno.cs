@@ -12,15 +12,26 @@ namespace ArenaElemental.Formularios
     public class FormularioModerno : Form
     {
         private Bitmap fondo;
+        private bool fondoModerno = true;
 
         public FormularioModerno()
         {
             DoubleBuffered = true;
         }
 
+        /// <summary>
+        /// True (por defecto) pinta el fondo moderno del juego. Si se pone en false el formulario usa
+        /// solo su BackColor (un color liso), que sirve de respaldo cuando falta una imagen de fondo.
+        /// </summary>
+        public bool FondoModerno
+        {
+            get { return fondoModerno; }
+            set { fondoModerno = value; Invalidate(); }
+        }
+
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            if (BackgroundImage != null || ClientSize.Width <= 0 || ClientSize.Height <= 0)
+            if (!fondoModerno || BackgroundImage != null || ClientSize.Width <= 0 || ClientSize.Height <= 0)
             {
                 base.OnPaintBackground(e);
                 return;

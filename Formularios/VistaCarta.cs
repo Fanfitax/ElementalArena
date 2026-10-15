@@ -36,7 +36,7 @@ namespace ArenaElemental.Formularios
         {
             this.pequena = pequena;
             DoubleBuffered = true;
-            Size = pequena ? new Size(128, 207) : new Size(232, 420);
+            Size = pequena ? new Size(92, 178) : new Size(232, 420);
             BackColor = Estilo.Panel;
 
             if (pequena) ConstruirPequena();
@@ -66,6 +66,7 @@ namespace ArenaElemental.Formularios
             lblNombre = CrearTexto(panelCabecera, 8, 4, 134, 28, 14f, true);
             lblElemento = CrearTexto(panelCabecera, 130, 4, 82, 28, 8.5f, true);
             lblElemento.TextAlign = ContentAlignment.MiddleRight;
+            panelCabecera.Paint += Hijo_PintarFoil;
             Controls.Add(panelCabecera);
 
             pbImagen = CrearImagen(6, 46, 220, 200);
@@ -85,16 +86,17 @@ namespace ArenaElemental.Formularios
         private void ConstruirPequena()
         {
             panelCabecera = new Panel();
-            panelCabecera.SetBounds(4, 4, 120, 22);
-            lblNombre = CrearTexto(panelCabecera, 4, 1, 112, 20, 9f, true);
+            panelCabecera.SetBounds(3, 3, 86, 20);
+            lblNombre = CrearTexto(panelCabecera, 3, 1, 80, 18, 8.5f, true);
+            panelCabecera.Paint += Hijo_PintarFoil;
             Controls.Add(panelCabecera);
 
-            pbImagen = CrearImagen(4, 30, 120, 100);
+            pbImagen = CrearImagen(3, 26, 86, 72);
 
-            lblHp = CrearTexto(this, 6, 134, 116, 14, 8f, true);
-            barHp = CrearBarra(6, 148, 116, 8);
-            lblStats = CrearTexto(this, 6, 160, 116, 14, 8f, false);
-            lblEstado = CrearTexto(this, 6, 180, 116, 18, 8f, true);
+            lblHp = CrearTexto(this, 4, 100, 84, 14, 7.5f, true);
+            barHp = CrearBarra(4, 115, 84, 7);
+            lblStats = CrearTexto(this, 4, 125, 84, 14, 7.5f, false);
+            lblEstado = CrearTexto(this, 3, 143, 86, 30, 7.5f, true);   // admite 2 líneas ("SIGUE EN ENTRAR")
             lblEstado.TextAlign = ContentAlignment.MiddleCenter;
         }
 
@@ -118,6 +120,7 @@ namespace ArenaElemental.Formularios
             PictureBox pb = new PictureBox();
             pb.SetBounds(x, y, ancho, alto);
             pb.SizeMode = PictureBoxSizeMode.Normal;   // la ilustración ya se prepara exactamente de este tamaño
+            pb.Paint += Hijo_PintarFoil;               // el brillo también debe verse sobre la imagen
             Controls.Add(pb);
             return pb;
         }
@@ -245,6 +248,52 @@ namespace ArenaElemental.Formularios
             {
                 e.Graphics.DrawPath(lapiz, camino);
             }
+
+            // El brillo holográfico va al final para quedar por encima del fondo y del borde.
+            DibujarFoil(e.Graphics);
+        }
+
+        // ---------- Efecto "foil" (carta holográfica) ----------
+
+        /// <summary>
+        /// Reflejo diagonal de brillo suave, como una carta plastificada o de edición rara: una franja
+        /// de blanco semitransparente (con un leve tinte rosa y celeste en los bordes) que cruza la carta
+        /// de la esquina inferior izquierda a la superior derecha. Se dibuja con coordenadas de la carta.
+        /// </summary>
+        private void DibujarFoil(Graphics g)
+        {
+            Color transparente = Color.FromArgb(0, Color.White);
+
+            ColorBlend mezcla = new ColorBlend();
+            mezcla.Positions = new float[] { 0f, 0.26f, 0.38f, 0.50f, 0.62f, 0.74f, 1f };
+            mezcla.Colors = new Color[]
+            {
+                transparente,
+                transparente,
+                Color.FromArgb(14, 255, 140, 210),    // borde rosado
+                Color.FromArgb(34, Color.White),      // centro del brillo
+                Color.FromArgb(14, 120, 210, 255),    // borde celeste
+                transparente,
+                transparente
+            };
+
+            using (LinearGradientBrush brillo = new LinearGradientBrush(new Point(0, 0), new Point(Width, Height), transparente, transparente))
+            {
+                brillo.InterpolationColors = mezcla;
+                g.FillRectangle(brillo, 0, 0, Width, Height);
+            }
+        }
+
+        /// <summary>
+        /// Los controles hijos (imagen, cabecera) tapan lo que dibuja la carta, así que ellos también pintan
+        /// su parte del brillo. Se desplaza el dibujo para que la franja continúe sin cortes.
+        /// </summary>
+        private void Hijo_PintarFoil(object sender, PaintEventArgs e)
+        {
+            Control hijo = (Control)sender;
+            e.Graphics.TranslateTransform(-hijo.Left, -hijo.Top);
+            DibujarFoil(e.Graphics);
+            e.Graphics.ResetTransform();
         }
     }
 }

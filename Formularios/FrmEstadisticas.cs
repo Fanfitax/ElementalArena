@@ -56,8 +56,13 @@ namespace ArenaElemental.Formularios
             Button cerrar = new Button();
             cerrar.SetBounds(780, 524, 120, 40);
             Estilo.EstilizarBoton(cerrar, "Cerrar", Estilo.Acento);
-            cerrar.Click += delegate { Close(); };
+            cerrar.Click += Cerrar_Click;
             Controls.Add(cerrar);
+        }
+
+        private void Cerrar_Click(object sender, EventArgs e)
+        {
+            Close();
         }
 
         /// <summary>Una tarjeta redondeada con un número grande y su nombre debajo.</summary>

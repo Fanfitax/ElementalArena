@@ -69,29 +69,42 @@ namespace ArenaElemental.Formularios
 
             // Botones
             Button btnJugar = new Button();
-            btnJugar.SetBounds(54, 402, 340, 60);
-            Estilo.EstilizarBoton(btnJugar, "NUEVA PARTIDA", Color.FromArgb(46, 160, 96));
-            btnJugar.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
-            btnJugar.Click += delegate { NuevaPartida(); };
+            btnJugar.SetBounds(54, 392, 340, 50);
+            Estilo.EstilizarBoton(btnJugar, "NUEVA PARTIDA (VS CPU)", Color.FromArgb(46, 160, 96));
+            btnJugar.Font = new Font("Segoe UI", 14f, FontStyle.Bold);
+            btnJugar.Click += BtnJugar_Click;
             Controls.Add(btnJugar);
 
+            Button btnLan = new Button();
+            btnLan.SetBounds(54, 448, 340, 42);
+            Estilo.EstilizarBoton(btnLan, "PARTIDA LAN (2 JUGADORES)", Color.FromArgb(196, 120, 24));
+            btnLan.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
+            btnLan.Click += BtnLan_Click;
+            Controls.Add(btnLan);
+
             Button btnStats = new Button();
-            btnStats.SetBounds(54, 472, 340, 46);
-            Estilo.EstilizarBoton(btnStats, "MIS ESTADÍSTICAS", Estilo.Acento);
-            btnStats.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-            btnStats.Click += delegate { VerEstadisticas(); };
+            btnStats.SetBounds(54, 496, 166, 40);
+            Estilo.EstilizarBoton(btnStats, "ESTADÍSTICAS", Estilo.Acento);
+            btnStats.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            btnStats.Click += BtnStats_Click;
             Controls.Add(btnStats);
 
+            Button btnCodice = new Button();
+            btnCodice.SetBounds(228, 496, 166, 40);
+            Estilo.EstilizarBoton(btnCodice, "CÓDICE ELEMENTAL", Color.FromArgb(118, 78, 178));
+            btnCodice.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            btnCodice.Click += BtnCodice_Click;
+            Controls.Add(btnCodice);
+
             Button btnSalir = new Button();
-            btnSalir.SetBounds(54, 528, 340, 40);
+            btnSalir.SetBounds(54, 544, 340, 36);
             Estilo.EstilizarBoton(btnSalir, "SALIR", Estilo.PanelClaro);
-            btnSalir.Click += delegate { Close(); };
+            btnSalir.Click += BtnSalir_Click;
             Controls.Add(btnSalir);
 
-            Label nota = Estilo.CrearEtiqueta("Las estadísticas se guardan solo mientras el programa esté abierto.", 54, 590, 400, 20, 8.5f, false);
+            Label nota = Estilo.CrearEtiqueta("Las estadísticas se guardan solo mientras el programa esté abierto.", 54, 594, 400, 20, 8.5f, false);
             nota.ForeColor = Estilo.TextoSuave;
             Controls.Add(nota);
-
             AcceptButton = btnJugar;
         }
 
@@ -171,6 +184,33 @@ namespace ArenaElemental.Formularios
             }
         }
 
+        // ---------- Eventos de los botones ----------
+
+        private void BtnJugar_Click(object sender, EventArgs e)
+        {
+            NuevaPartida();
+        }
+
+        private void BtnLan_Click(object sender, EventArgs e)
+        {
+            PartidaLan();
+        }
+
+        private void BtnStats_Click(object sender, EventArgs e)
+        {
+            VerEstadisticas();
+        }
+
+        private void BtnCodice_Click(object sender, EventArgs e)
+        {
+            VerCodice();
+        }
+
+        private void BtnSalir_Click(object sender, EventArgs e)
+        {
+            Close();
+        }
+
         // ---------- Acciones ----------
 
         /// <summary>Devuelve el nombre escrito, o null si está vacío.</summary>
@@ -206,6 +246,93 @@ namespace ArenaElemental.Formularios
             }
         }
 
+        /// <summary>
+        /// Partida de dos jugadores en red. Pasos:
+        ///  1) FrmLan conecta los dos PCs (uno es anfitrión y el otro invitado).
+        ///  2) Cada jugador arma su equipo (el anfitrión también elige el escenario).
+        ///  3) Se intercambian los equipos con un mensaje CONFIG y los dos PCs crean el mismo combate:
+        ///     el equipo del anfitrión es el "Jugador" y el del invitado es el "Rival".
+        ///  4) FrmCombate se encarga de enviar y recibir las jugadas.
+        /// </summary>
+        private void PartidaLan()
+        {
+            string nombre = LeerNombre();
+            if (nombre == null) return;
+
+            RedLan red = null;
+            try
+            {
+                using (FrmLan conexion = new FrmLan())
+                {
+                    if (conexion.ShowDialog(this) != DialogResult.OK) return;
+                    red = conexion.Red;
+                }
+                bool soyAnfitrion = red.EsAnfitrion;
+
+                // Cada uno arma su equipo. El invitado no elige escenario.
+                ConfigPartida propia;
+                using (FrmSeleccionEquipo seleccion = new FrmSeleccionEquipo(CatalogoBase.Personajes, CatalogoBase.Escenarios, nombre))
+                {
+                    seleccion.PermitirElegirEscenario = soyAnfitrion;
+                    if (seleccion.ShowDialog(this) != DialogResult.OK) return;
+
+                    propia = new ConfigPartida();
+                    propia.NombreEquipo = seleccion.NombreEquipo;
+                    propia.Equipo = seleccion.EquipoElegido;
+                    if (soyAnfitrion)
+                    {
+                        propia.IndiceEscenario = CatalogoBase.Escenarios.IndexOf(seleccion.EscenarioElegido);
+                        propia.Semilla = azar.Next();
+                    }
+                }
+
+                // Se anuncia el equipo propio y se espera el del otro jugador.
+                red.EnviarTexto(propia.ATexto());
+                ConfigPartida ajena = EsperarConfigDelOtroJugador(red);
+                if (ajena == null) return;
+
+                // Los dos PCs arman el mismo combate: primero el equipo del anfitrión, luego el del invitado.
+                ConfigPartida delAnfitrion = soyAnfitrion ? propia : ajena;
+                ConfigPartida delInvitado = soyAnfitrion ? ajena : propia;
+                if (delAnfitrion.IndiceEscenario < 0)
+                {
+                    MessageBox.Show("El anfitrión no envió el escenario.", "Error de conexión", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                EquipoCombate equipoAnfitrion = new EquipoCombate(delAnfitrion.NombreEquipo, delAnfitrion.Equipo, true);
+                EquipoCombate equipoInvitado = new EquipoCombate(delInvitado.NombreEquipo, delInvitado.Equipo, false);
+                Combate combate = new Combate(CatalogoBase.Escenarios[delAnfitrion.IndiceEscenario], equipoAnfitrion, equipoInvitado, delAnfitrion.Semilla);
+
+                using (FrmCombate frm = new FrmCombate(nombre, combate, red, soyAnfitrion))
+                {
+                    frm.ShowDialog(this);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                MessageBox.Show("El equipo recibido no es válido: " + ex.Message, "Error de conexión", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                if (red != null) red.Cerrar();
+            }
+        }
+
+        /// <summary>Muestra una ventana de espera hasta que llega el CONFIG del otro jugador. Devuelve null si se canceló o llegó dañado.</summary>
+        private ConfigPartida EsperarConfigDelOtroJugador(RedLan red)
+        {
+            using (FrmEsperaLan espera = new FrmEsperaLan(red, "Tu equipo ya fue enviado. Cuando el otro jugador termine de armar el suyo empezará el combate."))
+            {
+                if (espera.ShowDialog(this) != DialogResult.OK) return null;
+
+                ConfigPartida config = ConfigPartida.DeTexto(espera.Mensaje);
+                if (config == null)
+                    MessageBox.Show("El otro jugador envió un equipo que no es válido.", "Error de conexión", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return config;
+            }
+        }
+
         /// <summary>Elige 3 personajes distintos al azar para el equipo de la CPU.</summary>
         private List<Personaje> SortearRival()
         {
@@ -218,6 +345,15 @@ namespace ArenaElemental.Formularios
                 disponibles.RemoveAt(k);
             }
             return elegidos;
+        }
+
+        /// <summary>Abre el Códice Elemental: galería de personajes con su historia y su reflexión filosófica.</summary>
+        private void VerCodice()
+        {
+            using (FrmCodice frm = new FrmCodice(CatalogoBase.Personajes))
+            {
+                frm.ShowDialog(this);
+            }
         }
 
         private void VerEstadisticas()

@@ -13,14 +13,17 @@ ARENA ELEMENTAL - Guía rápida
    Motor\        Combate (turnos, relevos y PILA del historial), EquipoCombate (COLA de relevos),
                  AccionCombate, IaRival (CPU)
    Datos\        CatalogoBase (listas estáticas con los 12 personajes y 4 escenarios),
+                 LorePersonajes (historia, reflexion filosofica y dilema de cada personaje),
                  RegistroPartidas (estadísticas en memoria), EstadisticaPartida
-   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas,
+   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas, FrmCodice (Codice Elemental: lore y antropologia filosofica),
                  VistaCarta (carta visual), MiniaturaPersonaje (ficha de la galeria),
-                 FormularioModerno (fondo comun), Ilustraciones (prepara las imagenes), Estilo
-   Imagenes\     Una ilustracion por personaje (pyra.jpg, golem.jpg...) y tablero.jpg. Se reemplazan
+                 FormularioModerno (fondo comun), Ilustraciones (prepara las imagenes), Estilo,
+                 Sonidos (efectos .wav con SoundPlayer), AvisoEvento (banner del Terremoto)
+   Imagenes\     Una ilustracion por personaje (pyra.jpg, golem.jpg...) y un fondo por escenario (volcan.jpg, lago.jpg, canon.jpg, cumbre.jpg). Se reemplazan
                  por las tuyas con el mismo nombre; si falta alguna el juego usa colores lisos.
                  Ver Imagenes\LEEME.txt.
-   Herramientas\ Codigo que dibujo el tablero (no se compila con el proyecto)
+   Sonidos\      ataque.wav, habilidad.wav, relevo.wav y terremoto.wav. Si falta alguno, el juego sigue sin ese sonido.
+   Herramientas\ Codigo que dibujo el tablero y genero los sonidos (no se compila con el proyecto)
    BaseDatos\    Scripts SQL guardados para más adelante (no se usan por ahora)
 
 3) ESTRUCTURAS DE DATOS (de la guía)
@@ -41,9 +44,13 @@ ARENA ELEMENTAL - Guía rápida
    - El primer personaje del equipo sale al campo; los otros dos esperan en la cola en ese orden.
    - Relevo: entra el primero de la cola. No se puede relevar dos turnos seguidos.
    - Si tu personaje cae, entra automáticamente el siguiente de la cola (gratis).
-   - TERREMOTO: cada 4 rondas los dos personajes en el campo pierden 10% de su vida máxima
-     (nunca baja de 1 HP). Queda registrado en el historial y la ventana tiembla.
+   - TERREMOTO: en cada ronda hay 25% de probabilidad. Los dos personajes en el campo pierden
+     Min(f'(t), 20% de su vida máxima), con f(t) = 2t² + 5t y su derivada f'(t) = 4t + 5 (t = ronda).
+     Nunca baja de 1 HP. La fórmula queda en el historial, la ventana tiembla y aparece un banner.
+     Los numeros que suben sobre las cartas son el dano (rojo), la curacion (verde) y el Terremoto (naranja).
    - Escenario: +10% ATK a las cartas de su elemento.
+   - MODO LAN: en el menu, "PARTIDA LAN". Un PC crea la partida (anfitrion, elige el escenario) y el otro se
+     une con la IP que ve el anfitrion (puerto 8888). Juegan por turnos cada uno en su PC.
    - Ronda 30: muerte súbita (+15% de ATK por ronda) para evitar combates eternos.
 
 5) NOTA SOBRE EL DISEÑADOR

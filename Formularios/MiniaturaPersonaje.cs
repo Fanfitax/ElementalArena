@@ -57,8 +57,8 @@ namespace ArenaElemental.Formularios
             foreach (Control hijo in Controls)
             {
                 hijo.Cursor = Cursors.Hand;
-                hijo.Click += delegate { OnClick(EventArgs.Empty); };
-                hijo.DoubleClick += delegate { OnDoubleClick(EventArgs.Empty); };
+                hijo.Click += Hijo_Click;
+                hijo.DoubleClick += Hijo_DoubleClick;
             }
 
             Estilo.Redondear(this, 10);
@@ -68,6 +68,16 @@ namespace ArenaElemental.Formularios
         public Personaje Personaje
         {
             get { return personaje; }
+        }
+
+        private void Hijo_Click(object sender, EventArgs e)
+        {
+            OnClick(EventArgs.Empty);
+        }
+
+        private void Hijo_DoubleClick(object sender, EventArgs e)
+        {
+            OnDoubleClick(EventArgs.Empty);
         }
 
         /// <summary>True si es el personaje que se está viendo en la vista previa (borde dorado).</summary>

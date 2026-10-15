@@ -2,10 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.Text;
 using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
@@ -16,10 +12,24 @@ namespace ArenaElemental.Formularios
     /// aquí se les quita el fondo, se recortan al personaje y se pintan sobre un fondo del color de su elemento.
     /// El nombre del archivo es el nombre del personaje en minúsculas ("pyra.jpg"); sirve .png, .jpg o .jpeg
     /// y también con tildes ("gólem.jpg") o sin ellas ("golem.jpg").
+    ///
+    /// Para quitar el fondo se usa un relleno por inundación (flood fill) con una Queue de puntos: se parte
+    /// de los bordes de la imagen y se avanza por todos los píxeles blancos vecinos. Esos píxeles se pintan
+    /// de magenta y se llama a Bitmap.MakeTransparent(Color.Magenta). Para que sea rápido, el trabajo se hace
+    /// sobre una copia reducida de la imagen (TamanoTrabajo) y cada píxel se lee una sola vez: GetPixel es lento,
+    /// así que primero se anota la "claridad" de cada píxel en una tabla y el relleno consulta esa tabla.
     /// </summary>
     public static class Ilustraciones
     {
         private static readonly string[] Extensiones = new string[] { ".png", ".jpg", ".jpeg" };
+
+        // Lado más largo (en píxeles) de la copia sobre la que se quita el fondo.
+        private const int TamanoTrabajo = 340;
+
+        // Un píxel se considera "fondo blanco" si su canal más bajo (R, G o B) llega a este valor.
+        private const int BlancoFondo = 232;
+        private const int BlancoPuro = 246;
+        private const int BordeClaro = 195;   // un píxel así de claro pegado al fondo se considera parte del contorno blanco
 
         // Personaje ya recortado (sin fondo). Si no hay imagen se guarda null para no volver a buscarla.
         private static Dictionary<string, Bitmap> recortes = new Dictionary<string, Bitmap>();
@@ -39,7 +49,10 @@ namespace ArenaElemental.Formularios
                 return arte;
 
             Bitmap recorte = ObtenerRecorte(p.Nombre);
-            arte = recorte == null ? null : Componer(recorte, p.Elemento, ancho, alto, ancho >= 200 ? 10 : 7);
+            if (recorte == null)
+                arte = null;
+            else
+                arte = Componer(recorte, p.Elemento, ancho, alto);
             compuestas[clave] = arte;
             return arte;
         }
@@ -56,20 +69,14 @@ namespace ArenaElemental.Formularios
                 return imagen;
 
             Bitmap recorte = ObtenerRecorte(nombrePersonaje);
-            imagen = null;
-            if (recorte != null)
+            if (recorte == null)
+            {
+                imagen = null;
+            }
+            else
             {
                 double escala = Math.Min((double)anchoMaximo / recorte.Width, (double)altoMaximo / recorte.Height);
-                int ancho = Math.Max(1, (int)(recorte.Width * escala));
-                int alto = Math.Max(1, (int)(recorte.Height * escala));
-                Bitmap reducido = new Bitmap(ancho, alto, PixelFormat.Format32bppArgb);
-                using (Graphics g = Graphics.FromImage(reducido))
-                {
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    g.DrawImage(recorte, 0, 0, ancho, alto);
-                }
-                imagen = reducido;
+                imagen = Reducir(recorte, (int)(recorte.Width * escala), (int)(recorte.Height * escala));
             }
             compuestas[clave] = imagen;
             return imagen;
@@ -82,6 +89,27 @@ namespace ArenaElemental.Formularios
             return nombrePersonaje.Trim().ToLower().Replace(' ', '_');
         }
 
+        private static string QuitarTildes(string texto)
+        {
+            return texto.Replace('á', 'a').Replace('é', 'e').Replace('í', 'i')
+                        .Replace('ó', 'o').Replace('ú', 'u').Replace('ñ', 'n');
+        }
+
+        /// <summary>Busca el archivo del personaje (con o sin tildes y con cada extensión) y lo carga. Devuelve null si no existe.</summary>
+        private static Image CargarOriginal(string nombre)
+        {
+            string[] nombres = new string[] { nombre, QuitarTildes(nombre) };
+            foreach (string n in nombres)
+            {
+                foreach (string extension in Extensiones)
+                {
+                    Image imagen = Estilo.CargarImagen(n + extension);
+                    if (imagen != null) return imagen;
+                }
+            }
+            return null;
+        }
+
         private static Bitmap ObtenerRecorte(string nombrePersonaje)
         {
             string nombre = NombreArchivo(nombrePersonaje);
@@ -89,206 +117,288 @@ namespace ArenaElemental.Formularios
             if (recortes.TryGetValue(nombre, out recorte))
                 return recorte;
 
-            // Prueba "gólem" y luego "golem", cada uno con cada extensión.
-            string[] nombres = new string[] { nombre, QuitarTildes(nombre) };
-            Image origen = null;
-            foreach (string n in nombres)
-            {
-                foreach (string ext in Extensiones)
-                {
-                    origen = Estilo.CargarImagen(n + ext);
-                    if (origen != null) break;
-                }
-                if (origen != null) break;
-            }
-
             recorte = null;
-            if (origen != null)
+            Image original = CargarOriginal(nombre);
+            if (original != null)
             {
                 try
                 {
-                    recorte = QuitarFondoYRecortar((Bitmap)origen);
+                    recorte = QuitarFondoYRecortar(original);
                 }
                 catch (Exception)
                 {
                     recorte = null;   // si algo sale mal con la imagen, la carta usa el color sólido
                 }
-                origen.Dispose();
+                original.Dispose();
             }
             recortes[nombre] = recorte;
             return recorte;
         }
 
-        private static string QuitarTildes(string texto)
-        {
-            string descompuesto = texto.Normalize(NormalizationForm.FormD);
-            StringBuilder sb = new StringBuilder();
-            foreach (char letra in descompuesto)
-            {
-                if (CharUnicodeInfo.GetUnicodeCategory(letra) != UnicodeCategory.NonSpacingMark)
-                    sb.Append(letra);
-            }
-            return sb.ToString();
-        }
-
         // ---------- Quitar el fondo blanco ----------
 
+        /// <summary>Copia la imagen en un Bitmap nuevo del tamaño indicado (dibujo directo con Graphics).</summary>
+        private static Bitmap Reducir(Image origen, int ancho, int alto)
+        {
+            Bitmap copia = new Bitmap(Math.Max(1, ancho), Math.Max(1, alto));
+            using (Graphics g = Graphics.FromImage(copia))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(origen, 0, 0, copia.Width, copia.Height);
+            }
+            return copia;
+        }
+
         /// <summary>
-        /// Convierte en transparente el fondo blanco que toca los bordes de la imagen (se rellena desde los bordes,
-        /// así los blancos de adentro del personaje, como los ojos, no se tocan) y recorta al personaje.
+        /// Quita el fondo blanco y recorta al personaje:
+        ///  1) se reduce la imagen,
+        ///  2) se marca como fondo todo el blanco conectado con los bordes,
+        ///  3) se marcan también las zonas blancas grandes encerradas (entre las piernas, por ejemplo);
+        ///     las chicas, como los ojos o la barba, se respetan,
+        ///  4) lo marcado se pinta de magenta y se vuelve transparente con MakeTransparent,
+        ///  5) se recorta alrededor de lo que quedó.
         /// </summary>
-        private static Bitmap QuitarFondoYRecortar(Bitmap origen)
+        private static Bitmap QuitarFondoYRecortar(Image origen)
         {
-            int w = origen.Width;
-            int h = origen.Height;
+            double escala = Math.Min(1.0, (double)TamanoTrabajo / Math.Max(origen.Width, origen.Height));
+            Bitmap imagen = Reducir(origen, (int)(origen.Width * escala), (int)(origen.Height * escala));
+            int ancho = imagen.Width;
+            int alto = imagen.Height;
 
-            Bitmap bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                g.DrawImage(origen, new Rectangle(0, 0, w, h));
-            }
+            int[,] claridad = MedirClaridad(imagen);
+            bool[,] esFondo = new bool[ancho, alto];
+            bool[,] visitado = new bool[ancho, alto];
 
-            // Se copian los píxeles a un arreglo de bytes: cada píxel son 4 bytes (azul, verde, rojo, transparencia).
-            BitmapData datos = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
-            int stride = datos.Stride;
-            byte[] px = new byte[stride * h];
-            Marshal.Copy(datos.Scan0, px, 0, px.Length);
+            MarcarFondoDeLosBordes(claridad, esFondo, visitado);
+            MarcarZonasBlancasGrandes(claridad, esFondo, visitado);
+            QuitarBordeClaro(claridad, esFondo);
 
-            // Relleno desde los bordes: todo lo blanco conectado con el borde es fondo.
-            bool[] esFondo = new bool[w * h];
-            int[] pila = new int[w * h];
-            int tope = 0;
-            for (int x = 0; x < w; x++)
-            {
-                Empujar(x, w, stride, px, esFondo, pila, ref tope);
-                Empujar((h - 1) * w + x, w, stride, px, esFondo, pila, ref tope);
-            }
-            for (int y = 0; y < h; y++)
-            {
-                Empujar(y * w, w, stride, px, esFondo, pila, ref tope);
-                Empujar(y * w + w - 1, w, stride, px, esFondo, pila, ref tope);
-            }
-            while (tope > 0)
-            {
-                int i = pila[--tope];
-                int x = i % w;
-                int y = i / w;
-                if (x > 0) Empujar(i - 1, w, stride, px, esFondo, pila, ref tope);
-                if (x < w - 1) Empujar(i + 1, w, stride, px, esFondo, pila, ref tope);
-                if (y > 0) Empujar(i - w, w, stride, px, esFondo, pila, ref tope);
-                if (y < h - 1) Empujar(i + w, w, stride, px, esFondo, pila, ref tope);
-            }
+            // Lo que es fondo se pinta de magenta y después se hace transparente de una sola vez.
+            PintarFondoDeMagenta(imagen, esFondo);
+            imagen.MakeTransparent(Color.Magenta);
+            SuavizarBorde(imagen, claridad, esFondo);
 
-            // Zonas blancas grandes que quedaron encerradas dentro del personaje (por ejemplo entre las piernas)
-            // también son fondo. Las zonas blancas chicas, como los ojos, se respetan.
-            bool[] visitado = new bool[w * h];
-            int[] lista = new int[w * h];
-            int umbral = w * h / 600;
-            for (int inicio = 0; inicio < w * h; inicio++)
-            {
-                if (visitado[inicio] || esFondo[inicio]) continue;
-                if (!EsBlancoPuro(px, (inicio / w) * stride + (inicio % w) * 4)) continue;
+            return Recortar(imagen, esFondo);
+        }
 
-                int cantidad = 0;
-                tope = 0;
-                pila[tope++] = inicio;
-                visitado[inicio] = true;
-                while (tope > 0)
+        /// <summary>
+        /// Anota la claridad de cada píxel: el menor de sus tres canales de color (rojo, verde y azul).
+        /// Un píxel es blanco cuando los tres canales son altos, o sea, cuando ese menor valor es alto.
+        /// </summary>
+        private static int[,] MedirClaridad(Bitmap imagen)
+        {
+            int[,] claridad = new int[imagen.Width, imagen.Height];
+            for (int y = 0; y < imagen.Height; y++)
+            {
+                for (int x = 0; x < imagen.Width; x++)
                 {
-                    int i = pila[--tope];
-                    lista[cantidad++] = i;
-                    int x = i % w;
-                    int y = i / w;
-                    if (x > 0) EmpujarBlancoPuro(i - 1, w, stride, px, esFondo, visitado, pila, ref tope);
-                    if (x < w - 1) EmpujarBlancoPuro(i + 1, w, stride, px, esFondo, visitado, pila, ref tope);
-                    if (y > 0) EmpujarBlancoPuro(i - w, w, stride, px, esFondo, visitado, pila, ref tope);
-                    if (y < h - 1) EmpujarBlancoPuro(i + w, w, stride, px, esFondo, visitado, pila, ref tope);
-                }
-                if (cantidad >= umbral)
-                {
-                    for (int k = 0; k < cantidad; k++) esFondo[lista[k]] = true;
+                    Color c = imagen.GetPixel(x, y);
+                    claridad[x, y] = Math.Min(c.R, Math.Min(c.G, c.B));
                 }
             }
+            return claridad;
+        }
 
-            // Se hace transparente el fondo y se suaviza el borde del personaje.
-            int minX = w, minY = h, maxX = -1, maxY = -1;
-            for (int y = 0; y < h; y++)
+        /// <summary>
+        /// Al borde del personaje le queda un contorno de píxeles casi blancos (por la compresión del JPG).
+        /// Se hacen dos pasadas: en cada una, el píxel claro que toca el fondo pasa a ser fondo también.
+        /// </summary>
+        private static void QuitarBordeClaro(int[,] claridad, bool[,] esFondo)
+        {
+            int ancho = claridad.GetLength(0);
+            int alto = claridad.GetLength(1);
+            for (int pasada = 0; pasada < 2; pasada++)
             {
-                for (int x = 0; x < w; x++)
+                List<Point> porQuitar = new List<Point>();
+                for (int y = 1; y < alto - 1; y++)
                 {
-                    int k = y * w + x;
-                    int p = y * stride + x * 4;
-                    if (esFondo[k])
+                    for (int x = 1; x < ancho - 1; x++)
                     {
-                        px[p] = 40; px[p + 1] = 30; px[p + 2] = 30; px[p + 3] = 0;
-                        continue;
+                        if (esFondo[x, y] || claridad[x, y] < BordeClaro) continue;
+                        bool tocaFondo = esFondo[x - 1, y] || esFondo[x + 1, y] || esFondo[x, y - 1] || esFondo[x, y + 1];
+                        if (tocaFondo) porQuitar.Add(new Point(x, y));
                     }
+                }
+                foreach (Point p in porQuitar)
+                    esFondo[p.X, p.Y] = true;
+            }
+        }
 
-                    bool tocaFondo = (x > 0 && esFondo[k - 1]) || (x < w - 1 && esFondo[k + 1])
-                                     || (y > 0 && esFondo[k - w]) || (y < h - 1 && esFondo[k + w]);
-                    if (tocaFondo)
-                    {
-                        int claro = Math.Min(px[p], Math.Min(px[p + 1], px[p + 2]));
-                        if (claro > 150)
-                            px[p + 3] = (byte)Math.Max(0, Math.Min(255, (240 - claro) * 255 / 90));
-                    }
+        /// <summary>
+        /// Los píxeles del contorno que todavía son algo claros se hacen semitransparentes: cuanto más claros,
+        /// más transparentes. Así el borde se funde con cualquier fondo en vez de verse un halo blanco.
+        /// </summary>
+        private static void SuavizarBorde(Bitmap imagen, int[,] claridad, bool[,] esFondo)
+        {
+            for (int y = 1; y < imagen.Height - 1; y++)
+            {
+                for (int x = 1; x < imagen.Width - 1; x++)
+                {
+                    if (esFondo[x, y] || claridad[x, y] < 120) continue;
+                    bool tocaFondo = esFondo[x - 1, y] || esFondo[x + 1, y] || esFondo[x, y - 1] || esFondo[x, y + 1];
+                    if (!tocaFondo) continue;
 
-                    if (px[p + 3] > 40)
+                    int opacidad = (235 - claridad[x, y]) * 255 / 115;
+                    opacidad = Math.Max(40, Math.Min(255, opacidad));
+                    Color c = imagen.GetPixel(x, y);
+                    imagen.SetPixel(x, y, Color.FromArgb(opacidad, c.R, c.G, c.B));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Pinta de magenta los píxeles marcados como fondo. Se pintan por tramos horizontales con Graphics
+        /// (mucho más rápido que llamar a SetPixel en cada píxel).
+        /// </summary>
+        private static void PintarFondoDeMagenta(Bitmap imagen, bool[,] esFondo)
+        {
+            using (Graphics g = Graphics.FromImage(imagen))
+            {
+                for (int y = 0; y < imagen.Height; y++)
+                {
+                    int inicioTramo = -1;
+                    for (int x = 0; x <= imagen.Width; x++)
                     {
-                        if (x < minX) minX = x;
-                        if (x > maxX) maxX = x;
-                        if (y < minY) minY = y;
-                        if (y > maxY) maxY = y;
+                        bool fondo = (x < imagen.Width) && esFondo[x, y];
+                        if (fondo && inicioTramo < 0)
+                        {
+                            inicioTramo = x;
+                        }
+                        else if (!fondo && inicioTramo >= 0)
+                        {
+                            g.FillRectangle(Brushes.Magenta, inicioTramo, y, x - inicioTramo, 1);
+                            inicioTramo = -1;
+                        }
                     }
                 }
             }
+        }
 
-            Marshal.Copy(px, 0, datos.Scan0, px.Length);
-            bmp.UnlockBits(datos);
+        /// <summary>Todo el blanco que toca el borde de la imagen es fondo.</summary>
+        private static void MarcarFondoDeLosBordes(int[,] claridad, bool[,] esFondo, bool[,] visitado)
+        {
+            int ancho = claridad.GetLength(0);
+            int alto = claridad.GetLength(1);
+            for (int x = 0; x < ancho; x++)
+            {
+                MarcarComoFondoSiEsBlanco(claridad, esFondo, visitado, x, 0);
+                MarcarComoFondoSiEsBlanco(claridad, esFondo, visitado, x, alto - 1);
+            }
+            for (int y = 0; y < alto; y++)
+            {
+                MarcarComoFondoSiEsBlanco(claridad, esFondo, visitado, 0, y);
+                MarcarComoFondoSiEsBlanco(claridad, esFondo, visitado, ancho - 1, y);
+            }
+        }
 
-            if (maxX < 0) return bmp;   // no se encontró nada: se deja la imagen tal cual
+        private static void MarcarComoFondoSiEsBlanco(int[,] claridad, bool[,] esFondo, bool[,] visitado, int x, int y)
+        {
+            if (visitado[x, y] || claridad[x, y] < BlancoFondo) return;
 
-            int margen = 4;
-            int izq = Math.Max(0, minX - margen);
-            int arr = Math.Max(0, minY - margen);
-            int der = Math.Min(w - 1, maxX + margen);
-            int aba = Math.Min(h - 1, maxY + margen);
-            Bitmap recorte = bmp.Clone(new Rectangle(izq, arr, der - izq + 1, aba - arr + 1), PixelFormat.Format32bppArgb);
-            bmp.Dispose();
+            List<Point> zona = BuscarZonaBlanca(claridad, visitado, x, y, BlancoFondo);
+            foreach (Point p in zona)
+                esFondo[p.X, p.Y] = true;
+        }
+
+        /// <summary>Las zonas de blanco puro encerradas dentro del personaje: si son grandes, también son fondo.</summary>
+        private static void MarcarZonasBlancasGrandes(int[,] claridad, bool[,] esFondo, bool[,] visitado)
+        {
+            int ancho = claridad.GetLength(0);
+            int alto = claridad.GetLength(1);
+            int minimoPixeles = ancho * alto / 600;
+            for (int y = 0; y < alto; y++)
+            {
+                for (int x = 0; x < ancho; x++)
+                {
+                    if (visitado[x, y] || claridad[x, y] < BlancoPuro) continue;
+
+                    List<Point> zona = BuscarZonaBlanca(claridad, visitado, x, y, BlancoPuro);
+                    if (zona.Count < minimoPixeles) continue;   // una zona chica (un ojo, la barba) se conserva
+                    foreach (Point p in zona)
+                        esFondo[p.X, p.Y] = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Relleno por inundación: parte de un píxel blanco y, con una cola (Queue), visita a sus vecinos de arriba,
+        /// abajo, izquierda y derecha que también sean blancos. Devuelve todos los píxeles de esa zona.
+        /// </summary>
+        private static List<Point> BuscarZonaBlanca(int[,] claridad, bool[,] visitado, int inicioX, int inicioY, int minimoBlanco)
+        {
+            List<Point> zona = new List<Point>();
+            Queue<Point> pendientes = new Queue<Point>();
+            pendientes.Enqueue(new Point(inicioX, inicioY));
+            visitado[inicioX, inicioY] = true;
+
+            int ancho = claridad.GetLength(0);
+            int alto = claridad.GetLength(1);
+            int[] difX = new int[] { 1, -1, 0, 0 };
+            int[] difY = new int[] { 0, 0, 1, -1 };
+
+            while (pendientes.Count > 0)
+            {
+                Point actual = pendientes.Dequeue();
+                zona.Add(actual);
+
+                for (int k = 0; k < 4; k++)
+                {
+                    int nx = actual.X + difX[k];
+                    int ny = actual.Y + difY[k];
+                    if (nx < 0 || ny < 0 || nx >= ancho || ny >= alto) continue;
+                    if (visitado[nx, ny]) continue;
+                    if (claridad[nx, ny] < minimoBlanco) continue;
+
+                    visitado[nx, ny] = true;
+                    pendientes.Enqueue(new Point(nx, ny));
+                }
+            }
+            return zona;
+        }
+
+
+        /// <summary>Recorta la imagen al rectángulo que contiene al personaje (los píxeles que no son fondo).</summary>
+        private static Bitmap Recortar(Bitmap imagen, bool[,] esFondo)
+        {
+            int minX = imagen.Width, minY = imagen.Height, maxX = -1, maxY = -1;
+            for (int y = 0; y < imagen.Height; y++)
+            {
+                for (int x = 0; x < imagen.Width; x++)
+                {
+                    if (esFondo[x, y]) continue;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+            if (maxX < 0) return imagen;   // no se encontró nada: se deja la imagen tal cual
+
+            int margen = 3;
+            int izquierda = Math.Max(0, minX - margen);
+            int arriba = Math.Max(0, minY - margen);
+            int derecha = Math.Min(imagen.Width - 1, maxX + margen);
+            int abajo = Math.Min(imagen.Height - 1, maxY + margen);
+
+            Rectangle zona = new Rectangle(izquierda, arriba, derecha - izquierda + 1, abajo - arriba + 1);
+            Bitmap recorte = new Bitmap(zona.Width, zona.Height);
+            using (Graphics g = Graphics.FromImage(recorte))
+            {
+                g.DrawImage(imagen, new Rectangle(0, 0, zona.Width, zona.Height), zona, GraphicsUnit.Pixel);
+            }
+            imagen.Dispose();
             return recorte;
-        }
-
-        /// <summary>Agrega el píxel j a la pila si es blanco y todavía no se marcó como fondo.</summary>
-        private static void Empujar(int j, int w, int stride, byte[] px, bool[] esFondo, int[] pila, ref int tope)
-        {
-            if (esFondo[j]) return;
-            int p = (j / w) * stride + (j % w) * 4;
-            bool transparente = px[p + 3] < 20;
-            bool blanco = Math.Min(px[p], Math.Min(px[p + 1], px[p + 2])) >= 232;
-            if (!transparente && !blanco) return;
-            esFondo[j] = true;
-            pila[tope++] = j;
-        }
-
-        private static bool EsBlancoPuro(byte[] px, int p)
-        {
-            return px[p + 3] >= 20 && Math.Min(px[p], Math.Min(px[p + 1], px[p + 2])) >= 246;
-        }
-
-        private static void EmpujarBlancoPuro(int j, int w, int stride, byte[] px, bool[] esFondo, bool[] visitado, int[] pila, ref int tope)
-        {
-            if (visitado[j] || esFondo[j]) return;
-            if (!EsBlancoPuro(px, (j / w) * stride + (j % w) * 4)) return;
-            visitado[j] = true;
-            pila[tope++] = j;
         }
 
         // ---------- Armar la ilustración de la carta ----------
 
         /// <summary>Pinta un fondo con degradado y resplandor del color del elemento y encima al personaje.</summary>
-        private static Image Componer(Bitmap personaje, Elemento elemento, int ancho, int alto, int radio)
+        private static Image Componer(Bitmap personaje, Elemento elemento, int ancho, int alto)
         {
-            Bitmap resultado = new Bitmap(ancho, alto, PixelFormat.Format32bppArgb);
+            int radio = 7;
+            if (ancho >= 200) radio = 10;
+
+            Bitmap resultado = new Bitmap(ancho, alto);
             Color color = Estilo.ColorDe(elemento);
             Rectangle r = new Rectangle(0, 0, ancho, alto);
 
@@ -297,11 +407,12 @@ namespace ArenaElemental.Formularios
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.SetClip(marco);
 
                 // Fondo: del color oscuro del elemento (arriba) a uno más vivo (abajo).
-                using (LinearGradientBrush fondo = new LinearGradientBrush(r, Mezclar(color, Color.Black, 0.78), Mezclar(color, Color.Black, 0.30), 90f))
+                Color arriba = Mezclar(color, Color.Black, 0.78);
+                Color abajo = Mezclar(color, Color.Black, 0.30);
+                using (LinearGradientBrush fondo = new LinearGradientBrush(r, arriba, abajo, 90f))
                 {
                     g.FillRectangle(fondo, r);
                 }
@@ -320,17 +431,18 @@ namespace ArenaElemental.Formularios
 
                 // El personaje, ajustado al tamaño sin deformarse y apoyado abajo.
                 double escala = Math.Min(ancho * 0.94 / personaje.Width, alto * 0.93 / personaje.Height);
-                int pw = (int)(personaje.Width * escala);
-                int ph = (int)(personaje.Height * escala);
-                int px = (ancho - pw) / 2;
-                int py = alto - ph - (int)(alto * 0.03);
+                int anchoPersonaje = (int)(personaje.Width * escala);
+                int altoPersonaje = (int)(personaje.Height * escala);
+                int x = (ancho - anchoPersonaje) / 2;
+                int y = alto - altoPersonaje - (int)(alto * 0.03);
 
                 // Sombra en el suelo.
                 using (SolidBrush sombra = new SolidBrush(Color.FromArgb(90, 0, 0, 0)))
                 {
-                    g.FillEllipse(sombra, ancho / 2 - (int)(pw * 0.38), alto - (int)(alto * 0.075), (int)(pw * 0.76), (int)(alto * 0.06));
+                    g.FillEllipse(sombra, ancho / 2 - (int)(anchoPersonaje * 0.38), alto - (int)(alto * 0.075),
+                                  (int)(anchoPersonaje * 0.76), (int)(alto * 0.06));
                 }
-                g.DrawImage(personaje, px, py, pw, ph);
+                g.DrawImage(personaje, x, y, anchoPersonaje, altoPersonaje);
 
                 // Un leve brillo arriba, como el barniz de una carta.
                 Rectangle superior = new Rectangle(0, 0, ancho, alto / 3);

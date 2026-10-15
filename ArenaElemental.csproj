@@ -57,18 +57,25 @@
     <Compile Include="Motor\EquipoCombate.cs" />
     <Compile Include="Motor\Combate.cs" />
     <Compile Include="Motor\IaRival.cs" />
+    <Compile Include="Motor\RedLan.cs" />
     <Compile Include="Datos\CatalogoBase.cs" />
     <Compile Include="Datos\EstadisticaPartida.cs" />
     <Compile Include="Datos\RegistroPartidas.cs" />
+    <Compile Include="Datos\LorePersonajes.cs" />
     <Compile Include="Formularios\Estilo.cs" />
     <Compile Include="Formularios\VistaCarta.cs" />
     <Compile Include="Formularios\Ilustraciones.cs" />
     <Compile Include="Formularios\MiniaturaPersonaje.cs" />
     <Compile Include="Formularios\FormularioModerno.cs" />
+    <Compile Include="Formularios\Sonidos.cs" />
+    <Compile Include="Formularios\AvisoEvento.cs" />
     <Compile Include="Formularios\FrmMenu.cs" />
     <Compile Include="Formularios\FrmSeleccionEquipo.cs" />
     <Compile Include="Formularios\FrmCombate.cs" />
     <Compile Include="Formularios\FrmEstadisticas.cs" />
+    <Compile Include="Formularios\FrmCodice.cs" />
+    <Compile Include="Formularios\FrmLan.cs" />
+    <Compile Include="Formularios\FrmEsperaLan.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.Targets" />
 </Project>

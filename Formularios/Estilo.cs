@@ -26,6 +26,15 @@ namespace ArenaElemental.Formularios
         /// </summary>
         public static string BuscarImagen(string archivo)
         {
+            return BuscarEnCarpeta("Imagenes", archivo);
+        }
+
+        /// <summary>
+        /// Igual que BuscarImagen pero para cualquier carpeta del juego (por ejemplo "Sonidos").
+        /// Devuelve la ruta completa del archivo o null si no existe.
+        /// </summary>
+        public static string BuscarEnCarpeta(string nombreCarpeta, string archivo)
+        {
             string[] carpetas = new string[]
             {
                 Application.StartupPath,
@@ -36,7 +45,7 @@ namespace ArenaElemental.Formularios
 
             foreach (string carpeta in carpetas)
             {
-                string ruta = Path.Combine(Path.Combine(carpeta, "Imagenes"), archivo);
+                string ruta = Path.Combine(Path.Combine(carpeta, nombreCarpeta), archivo);
                 if (File.Exists(ruta)) return ruta;
             }
             return null;

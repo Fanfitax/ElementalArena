@@ -3,7 +3,7 @@ IMAGENES DEL JUEGO
 
 El juego busca estos archivos al abrir el combate. Si falta alguno no pasa nada:
 - Personaje sin imagen -> su carta queda con un color solido del elemento.
-- Sin tablero.jpg      -> el fondo del combate es un azul oscuro liso.
+- Sin imagen de escenario -> el fondo del combate es un color liso del tema del escenario.
 
 PERSONAJES: <nombre en minusculas, sin tildes y con guion bajo en lugar de espacios>.jpg  (tambien sirven .png y .jpeg)
   Si el nombre lleva tilde tambien funciona con ella (gólem.jpg), pero se recomienda sin tilde.
@@ -17,7 +17,9 @@ PERSONAJES: <nombre en minusculas, sin tildes y con guion bajo en lugar de espac
   Por eso lo ideal es un personaje de cuerpo completo sobre fondo BLANCO liso (cualquier tamano, ej. 1024 x 1024).
   Tambien sirven PNG con fondo transparente.
 
-TABLERO: tablero.jpg  (recomendado 1264 x 500 px; se estira para cubrir la ventana de combate).
-  El actual lo dibuja Herramientas\GeneradorTablero.cs; puedes reemplazarlo por cualquier imagen.
+FONDOS DE ESCENARIO (el combate usa el del elemento del escenario elegido):
+  volcan.jpg (Fuego)   lago.jpg (Agua)   canon.jpg (Tierra)   cumbre.jpg (Aire)
+  Cualquier tamano; se recorta por el centro al formato de la ventana (1264 x 500) y se oscurece un poco.
+  tablero.jpg ya no se usa en el juego (lo dibuja Herramientas\GeneradorTablero.cs).
 
 Las imagenes se buscan junto al .exe (bin\Debug\Imagenes), en la carpeta actual o en la carpeta del proyecto.

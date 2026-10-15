@@ -25,7 +25,7 @@ namespace ArenaElemental.Formularios
 
         private MiniaturaPersonaje[] miniaturas;
         private VistaCarta vistaPrevia;
-        private Label lblDetalle, lblEscenario, lblConsejo;
+        private Label lblDetalle, lblEscenario, lblConsejo, etEscenario;
         private Button btnAgregar, btnCombatir, btnVolver;
         private TextBox txtNombreEquipo;
         private Button[] botonesEscenario;
@@ -55,6 +55,26 @@ namespace ArenaElemental.Formularios
         public Escenario EscenarioElegido { get { return escenarios[indiceEscenario]; } }
         public string NombreEquipo { get { return txtNombreEquipo.Text.Trim(); } }
 
+        /// <summary>
+        /// Si es false se oculta la elección de escenario. Se usa en el modo LAN para el jugador que se une:
+        /// el escenario lo elige el anfitrión.
+        /// </summary>
+        public bool PermitirElegirEscenario
+        {
+            get { return etEscenario.Visible; }
+            set
+            {
+                etEscenario.Visible = value;
+                lblEscenario.Visible = value;
+                foreach (Button b in botonesEscenario)
+                    b.Visible = value;
+                if (!value)
+                {
+                    lblConsejo.Text = "El escenario lo elige el anfitrión de la partida.";
+                }
+            }
+        }
+
         // ---------- Construcción de la interfaz ----------
 
         private void ConstruirInterfaz(string nombreJugador)
@@ -81,7 +101,7 @@ namespace ArenaElemental.Formularios
             btnVolver = new Button();
             btnVolver.SetBounds(1130, 14, 110, 32);
             Estilo.EstilizarBoton(btnVolver, "Volver", Estilo.PanelClaro);
-            btnVolver.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
+            btnVolver.Click += BtnVolver_Click;
             Controls.Add(btnVolver);
         }
 
@@ -104,9 +124,8 @@ namespace ArenaElemental.Formularios
                 int fila = i % 3;
                 MiniaturaPersonaje m = new MiniaturaPersonaje(catalogo[i]);
                 m.Location = new Point(20 + columna * 148, 94 + fila * 158);
-                Personaje p = catalogo[i];
-                m.Click += delegate { Seleccionar(p); };
-                m.DoubleClick += delegate { Seleccionar(p); AgregarSeleccionado(); };
+                m.Click += Miniatura_Click;
+                m.DoubleClick += Miniatura_DoubleClick;
                 Controls.Add(m);
                 miniaturas[i] = m;
             }
@@ -131,7 +150,7 @@ namespace ArenaElemental.Formularios
             btnAgregar = new Button();
             btnAgregar.SetBounds(624, 500, 232, 44);
             Estilo.EstilizarBoton(btnAgregar, "AGREGAR AL EQUIPO", Color.FromArgb(46, 160, 96));
-            btnAgregar.Click += delegate { AgregarSeleccionado(); };
+            btnAgregar.Click += BtnAgregar_Click;
             Controls.Add(btnAgregar);
 
             lblConsejo = Estilo.CrearEtiqueta("Un clic en un personaje muestra su carta.\nDoble clic (o el botón) lo agrega a tu equipo.",
@@ -161,22 +180,22 @@ namespace ArenaElemental.Formularios
             txtNombreEquipo.BorderStyle = BorderStyle.FixedSingle;
             txtNombreEquipo.MaxLength = 40;
             txtNombreEquipo.Text = "Equipo de " + nombreJugador;
-            txtNombreEquipo.TextChanged += delegate { ActualizarBotonCombatir(); };
+            txtNombreEquipo.TextChanged += TxtNombreEquipo_TextChanged;
             Controls.Add(txtNombreEquipo);
 
-            Label etEscenario = Estilo.CrearEtiqueta("ESCENARIO", 876, 380, 364, 18, 8.5f, true);
+            etEscenario = Estilo.CrearEtiqueta("ESCENARIO", 876, 380, 364, 18, 8.5f, true);
             etEscenario.ForeColor = Color.Gold;
             Controls.Add(etEscenario);
 
             botonesEscenario = new Button[escenarios.Count];
             for (int i = 0; i < escenarios.Count; i++)
             {
-                int indice = i;
                 Button b = new Button();
+                b.Tag = i;   // el número del escenario, para saber cuál botón se presionó
                 b.SetBounds(876 + (i % 2) * 186, 402 + (i / 2) * 42, 178, 36);
                 Color color = Estilo.FondoDe(escenarios[i].ElementoAfin);
                 Estilo.EstilizarBoton(b, escenarios[i].Nombre, Color.FromArgb(color.R + 30, color.G + 30, color.B + 30));
-                b.Click += delegate { ElegirEscenario(indice); };
+                b.Click += Escenario_Click;
                 Controls.Add(b);
                 botonesEscenario[i] = b;
             }
@@ -189,7 +208,7 @@ namespace ArenaElemental.Formularios
             btnCombatir.SetBounds(876, 560, 364, 62);
             Estilo.EstilizarBoton(btnCombatir, "¡A COMBATIR!", Color.FromArgb(46, 160, 96));
             btnCombatir.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
-            btnCombatir.Click += delegate { DialogResult = DialogResult.OK; Close(); };
+            btnCombatir.Click += BtnCombatir_Click;
             Controls.Add(btnCombatir);
         }
 
@@ -213,13 +232,16 @@ namespace ArenaElemental.Formularios
             casillaRol[i] = Estilo.CrearEtiqueta(string.Empty, 68, 36, 200, 20, 8.5f, true);
             panel.Controls.Add(casillaRol[i]);
 
-            int indice = i;
+            // Cada botón guarda en Tag el número de su casilla.
             casillaSubir[i] = CrearBotonCasilla(panel, 270, "▲");
-            casillaSubir[i].Click += delegate { MoverEnEquipo(indice, -1); };
+            casillaSubir[i].Tag = i;
+            casillaSubir[i].Click += CasillaSubir_Click;
             casillaBajar[i] = CrearBotonCasilla(panel, 302, "▼");
-            casillaBajar[i].Click += delegate { MoverEnEquipo(indice, 1); };
+            casillaBajar[i].Tag = i;
+            casillaBajar[i].Click += CasillaBajar_Click;
             casillaQuitar[i] = CrearBotonCasilla(panel, 334, "×");
-            casillaQuitar[i].Click += delegate { QuitarDelEquipo(indice); };
+            casillaQuitar[i].Tag = i;
+            casillaQuitar[i].Click += CasillaQuitar_Click;
             casillaQuitar[i].BackColor = Color.FromArgb(150, 50, 60);
         }
 
@@ -232,6 +254,64 @@ namespace ArenaElemental.Formularios
             b.Padding = new Padding(0);
             panel.Controls.Add(b);
             return b;
+        }
+
+        // ---------- Eventos de los controles ----------
+
+        private void BtnVolver_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+
+        private void BtnCombatir_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+
+        private void BtnAgregar_Click(object sender, EventArgs e)
+        {
+            AgregarSeleccionado();
+        }
+
+        private void TxtNombreEquipo_TextChanged(object sender, EventArgs e)
+        {
+            ActualizarBotonCombatir();
+        }
+
+        private void Miniatura_Click(object sender, EventArgs e)
+        {
+            MiniaturaPersonaje miniatura = (MiniaturaPersonaje)sender;
+            Seleccionar(miniatura.Personaje);
+        }
+
+        private void Miniatura_DoubleClick(object sender, EventArgs e)
+        {
+            MiniaturaPersonaje miniatura = (MiniaturaPersonaje)sender;
+            Seleccionar(miniatura.Personaje);
+            AgregarSeleccionado();
+        }
+
+        private void Escenario_Click(object sender, EventArgs e)
+        {
+            Button boton = (Button)sender;
+            ElegirEscenario((int)boton.Tag);
+        }
+
+        private void CasillaSubir_Click(object sender, EventArgs e)
+        {
+            MoverEnEquipo((int)((Button)sender).Tag, -1);
+        }
+
+        private void CasillaBajar_Click(object sender, EventArgs e)
+        {
+            MoverEnEquipo((int)((Button)sender).Tag, 1);
+        }
+
+        private void CasillaQuitar_Click(object sender, EventArgs e)
+        {
+            QuitarDelEquipo((int)((Button)sender).Tag);
         }
 
         // ---------- Selección y equipo ----------
