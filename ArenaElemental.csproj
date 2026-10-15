@@ -60,7 +60,7 @@
     <Compile Include="Datos\EstadisticaPartida.cs" />
     <Compile Include="Datos\RegistroPartidas.cs" />
     <Compile Include="Formularios\Estilo.cs" />
-    <Compile Include="Formularios\TarjetaPersonaje.cs" />
+    <Compile Include="Formularios\VistaCarta.cs" />
     <Compile Include="Formularios\FrmMenu.cs" />
     <Compile Include="Formularios\FrmSeleccionEquipo.cs" />
     <Compile Include="Formularios\FrmCombate.cs" />

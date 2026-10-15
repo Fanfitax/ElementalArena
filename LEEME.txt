@@ -14,7 +14,8 @@ ARENA ELEMENTAL - Guía rápida
                  AccionCombate, IaRival (CPU)
    Datos\        CatalogoBase (listas estáticas con los 12 personajes y 4 escenarios),
                  RegistroPartidas (estadísticas en memoria), EstadisticaPartida
-   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate, FrmEstadisticas, TarjetaPersonaje, Estilo
+   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas,
+                 VistaCarta (carta visual), Estilo
    BaseDatos\    Scripts SQL guardados para más adelante (no se usan por ahora)
 
 3) ESTRUCTURAS DE DATOS (de la guía)
@@ -30,6 +31,8 @@ ARENA ELEMENTAL - Guía rápida
    - El primer personaje del equipo sale al campo; los otros dos esperan en la cola en ese orden.
    - Relevo: entra el primero de la cola. No se puede relevar dos turnos seguidos.
    - Si tu personaje cae, entra automáticamente el siguiente de la cola (gratis).
+   - TERREMOTO: cada 4 rondas los dos personajes en el campo pierden 10% de su vida máxima
+     (nunca baja de 1 HP). Queda registrado en el historial y la ventana tiembla.
    - Escenario: +10% ATK a las cartas de su elemento.
    - Ronda 30: muerte súbita (+15% de ATK por ronda) para evitar combates eternos.
 

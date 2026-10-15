@@ -19,6 +19,12 @@ namespace ArenaElemental.Motor
         public const int TurnoMuerteSubita = 30;
         public const double IncrementoMuerteSubita = 0.15;
 
+        /// <summary>Cada cuántas rondas ocurre el Terremoto (rondas 4, 8, 12...).</summary>
+        public const int RondasEntreTerremotos = 4;
+
+        /// <summary>El Terremoto quita este porcentaje de la vida máxima a los dos personajes en el campo.</summary>
+        public const int PorcentajeDanoTerremoto = 10;
+
         // PILA del historial: lo último que pasó queda arriba (Push al agregar, Peek para ver la última).
         private Stack<string> historial = new Stack<string>();
 
@@ -74,6 +80,18 @@ namespace ArenaElemental.Motor
         public string UltimaJugada
         {
             get { return historial.Count > 0 ? historial.Peek() : string.Empty; }
+        }
+
+        /// <summary>True si en la ronda actual ocurrió el Terremoto.</summary>
+        public bool TerremotoEstaRonda
+        {
+            get { return Turno % RondasEntreTerremotos == 0; }
+        }
+
+        /// <summary>Cuántas rondas faltan para el próximo Terremoto (el de esta ronda no cuenta).</summary>
+        public int RondasParaTerremoto
+        {
+            get { return RondasEntreTerremotos - (Turno % RondasEntreTerremotos); }
         }
 
         public EquipoCombate Oponente(EquipoCombate equipo)
@@ -223,8 +241,31 @@ namespace ArenaElemental.Motor
             {
                 Turno++;
                 AplicarMuerteSubita();
+                if (TerremotoEstaRonda) ProvocarTerremoto();
             }
             PrepararTurno();
+        }
+
+        /// <summary>
+        /// Evento automático: cada RondasEntreTerremotos rondas la tierra tiembla y los dos personajes
+        /// que están en el campo pierden el 10% de su vida máxima. Nunca los deja por debajo de 1 HP
+        /// (así el Terremoto no elimina a nadie). Cada efecto se guarda en la pila del historial.
+        /// </summary>
+        private void ProvocarTerremoto()
+        {
+            Registrar("¡TERREMOTO! El suelo tiembla en " + Escenario.Nombre + " (ronda " + Turno + ").");
+            AplicarDanoTerremoto(Jugador.Activo);
+            AplicarDanoTerremoto(Rival.Activo);
+        }
+
+        private void AplicarDanoTerremoto(Personaje p)
+        {
+            int dano = p.HpMax * PorcentajeDanoTerremoto / 100;
+            if (dano < 1) dano = 1;
+            if (dano > p.Hp - 1) dano = p.Hp - 1;   // siempre queda al menos 1 HP
+
+            int aplicado = p.RecibirDano(dano);
+            Registrar("   " + p.Nombre + " pierde " + aplicado + " HP (" + p.Hp + "/" + p.HpMax + ").");
         }
 
         /// <summary>Pasada la ronda TurnoMuerteSubita, el ataque de todos crece cada ronda para que el combate termine.</summary>
