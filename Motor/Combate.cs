@@ -117,15 +117,21 @@ namespace ArenaElemental.Motor
                     return true;
 
                 case TipoAccion.Habilidad:
-                    if (!activo.PuedeUsarHabilidad())
+                    if (accion.NumeroHabilidad < 0 || accion.NumeroHabilidad >= Personaje.CantidadHabilidades)
                     {
-                        if (activo.CooldownActual > 0)
-                            motivo = activo.NombreHabilidad + " en recarga (" + activo.CooldownActual + " turno/s).";
-                        else
-                            motivo = "Energía insuficiente (" + activo.Energia + "/" + activo.CostoHabilidad + ").";
+                        motivo = "Esa habilidad no existe.";
                         return false;
                     }
-                    if (!activo.HabilidadEsOfensiva && accion.Indice >= 0)
+                    Habilidad habilidad = activo.ObtenerHabilidad(accion.NumeroHabilidad);
+                    if (!activo.PuedeUsarHabilidad(accion.NumeroHabilidad))
+                    {
+                        if (habilidad.CooldownActual > 0)
+                            motivo = habilidad.Nombre + " en recarga (" + habilidad.CooldownActual + " turno/s).";
+                        else
+                            motivo = "Energía insuficiente (" + activo.Energia + "/" + habilidad.Costo + ").";
+                        return false;
+                    }
+                    if (habilidad.RequiereAliado && accion.Indice >= 0)
                     {
                         if (accion.Indice >= equipo.Miembros.Count || !equipo.Miembros[accion.Indice].EstaVivo)
                         {
@@ -180,17 +186,20 @@ namespace ArenaElemental.Motor
                     }
                 case TipoAccion.Habilidad:
                     {
-                        if (activo.HabilidadEsOfensiva)
+                        Habilidad habilidad = activo.ObtenerHabilidad(accion.NumeroHabilidad);
+                        if (habilidad.EsOfensiva)
                         {
+                            // Habilidad de ataque: va contra el enemigo activo.
                             int antes = enemigo.Hp;
-                            string texto = activo.UsarHabilidadEspecial(enemigo);
+                            string texto = activo.UsarHabilidad(accion.NumeroHabilidad, enemigo, propio.Miembros);
                             propio.SumarDanoInfligido(antes - enemigo.Hp);
                             Registrar(texto);
                         }
                         else
                         {
-                            Personaje aliado = accion.Indice >= 0 ? propio.Miembros[accion.Indice] : activo;
-                            Registrar(activo.UsarHabilidadEspecial(aliado));
+                            // Habilidad de utilidad: si cura a un aliado, el jugador eligió a cuál.
+                            Personaje aliado = (habilidad.RequiereAliado && accion.Indice >= 0) ? propio.Miembros[accion.Indice] : activo;
+                            Registrar(activo.UsarHabilidad(accion.NumeroHabilidad, aliado, propio.Miembros));
                         }
                         break;
                     }

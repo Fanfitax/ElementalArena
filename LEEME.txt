@@ -9,13 +9,18 @@ ARENA ELEMENTAL - Guía rápida
    El juego NO usa base de datos: todo vive en memoria.
 
 2) ESTRUCTURA
-   Modelos\      Personaje (abstracta), CartaFuego/Agua/Tierra/Aire, Escenario
+   Modelos\      Personaje (abstracta), CartaFuego/Agua/Tierra/Aire, Habilidad, Escenario
    Motor\        Combate (turnos, relevos y PILA del historial), EquipoCombate (COLA de relevos),
                  AccionCombate, IaRival (CPU)
    Datos\        CatalogoBase (listas estáticas con los 12 personajes y 4 escenarios),
                  RegistroPartidas (estadísticas en memoria), EstadisticaPartida
    Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas,
-                 VistaCarta (carta visual), Estilo
+                 VistaCarta (carta visual), MiniaturaPersonaje (ficha de la galeria),
+                 FormularioModerno (fondo comun), Ilustraciones (prepara las imagenes), Estilo
+   Imagenes\     Una ilustracion por personaje (pyra.jpg, golem.jpg...) y tablero.jpg. Se reemplazan
+                 por las tuyas con el mismo nombre; si falta alguna el juego usa colores lisos.
+                 Ver Imagenes\LEEME.txt.
+   Herramientas\ Codigo que dibujo el tablero (no se compila con el proyecto)
    BaseDatos\    Scripts SQL guardados para más adelante (no se usan por ahora)
 
 3) ESTRUCTURAS DE DATOS (de la guía)
@@ -27,7 +32,12 @@ ARENA ELEMENTAL - Guía rápida
 
 4) REGLAS
    - Triángulo: Agua > Fuego > Aire > Tierra > Agua (x1.5 ventaja, x0.5 desventaja).
-   - Equipo de 3; cada turno UNA acción: Atacar, Habilidad, Relevo o Descansar.
+   - Equipo de 3; cada turno UNA accion: Atacar, Habilidad de ataque, Habilidad de utilidad,
+     Relevo o Pasar. Cada personaje tiene 2 habilidades, cada una con su costo de energia y recarga:
+       Fuego (dano puro): la utilidad sube el ataque.   Agua (apoyo): la utilidad cura.
+       Tierra (tanques): la utilidad sube la defensa o devuelve dano.
+       Aire (veloces): la utilidad da energia, sube el ataque o cura.
+     Pasa el mouse sobre un boton de habilidad para ver lo que hace.
    - El primer personaje del equipo sale al campo; los otros dos esperan en la cola en ese orden.
    - Relevo: entra el primero de la cola. No se puede relevar dos turnos seguidos.
    - Si tu personaje cae, entra automáticamente el siguiente de la cola (gratis).

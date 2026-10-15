@@ -7,223 +7,363 @@ using ArenaElemental.Motor;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>Pantalla para armar el equipo de 3 personajes (el orden define quién inicia) y elegir escenario.</summary>
-    public class FrmSeleccionEquipo : Form
+    /// <summary>
+    /// Pantalla para armar el equipo de 3 personajes y elegir el escenario.
+    ///  - Izquierda: la galería con los 12 personajes (una columna por elemento). Clic = ver la carta, doble clic = agregar.
+    ///  - Centro: la carta grande del personaje seleccionado.
+    ///  - Derecha: las 3 casillas del equipo. El orden importa: el 1.º sale al campo y los otros esperan en la COLA de relevos.
+    /// </summary>
+    public class FrmSeleccionEquipo : FormularioModerno
     {
-        private readonly IList<Escenario> escenarios;
-        private readonly List<Personaje> equipo = new List<Personaje>();
+        private static Color PanelOscuro = Color.FromArgb(205, 10, 12, 18);
 
-        private ListView lvCatalogo;
-        private ListBox lstEquipo;
-        private Label lblDetalle;
-        private Label lblEscenario;
+        private List<Personaje> catalogo = new List<Personaje>();
+        private List<Escenario> escenarios = new List<Escenario>();
+        private List<Personaje> equipo = new List<Personaje>();
+        private Personaje seleccionado;
+        private int indiceEscenario;
+
+        private MiniaturaPersonaje[] miniaturas;
+        private VistaCarta vistaPrevia;
+        private Label lblDetalle, lblEscenario, lblConsejo;
+        private Button btnAgregar, btnCombatir, btnVolver;
         private TextBox txtNombreEquipo;
-        private ComboBox cboEscenario;
-        private Button btnAgregar, btnQuitar, btnSubir, btnBajar, btnCombatir, btnCancelar;
+        private Button[] botonesEscenario;
+
+        // Las 3 casillas del equipo
+        private Panel[] casilla = new Panel[EquipoCombate.TamanoEquipo];
+        private PictureBox[] casillaImagen = new PictureBox[EquipoCombate.TamanoEquipo];
+        private Label[] casillaNombre = new Label[EquipoCombate.TamanoEquipo];
+        private Label[] casillaRol = new Label[EquipoCombate.TamanoEquipo];
+        private Button[] casillaSubir = new Button[EquipoCombate.TamanoEquipo];
+        private Button[] casillaBajar = new Button[EquipoCombate.TamanoEquipo];
+        private Button[] casillaQuitar = new Button[EquipoCombate.TamanoEquipo];
 
         public FrmSeleccionEquipo(IList<Personaje> catalogo, IList<Escenario> escenarios, string nombreJugador)
         {
-            this.escenarios = escenarios;
+            this.catalogo = new List<Personaje>(catalogo);
+            this.escenarios = new List<Escenario>(escenarios);
+
             ConstruirInterfaz(nombreJugador);
-            foreach (Personaje p in catalogo) AgregarFilaCatalogo(p);
-            foreach (Escenario s in escenarios) cboEscenario.Items.Add(s);
-            if (cboEscenario.Items.Count > 0) cboEscenario.SelectedIndex = 0;
-            if (lvCatalogo.Items.Count > 0) lvCatalogo.Items[0].Selected = true;
-            ActualizarEstado();
+
+            if (this.catalogo.Count > 0) Seleccionar(this.catalogo[0]);
+            ElegirEscenario(0);
+            RefrescarEquipo();
         }
 
         public List<Personaje> EquipoElegido { get { return new List<Personaje>(equipo); } }
-        public Escenario EscenarioElegido { get { return cboEscenario.SelectedItem as Escenario; } }
+        public Escenario EscenarioElegido { get { return escenarios[indiceEscenario]; } }
         public string NombreEquipo { get { return txtNombreEquipo.Text.Trim(); } }
+
+        // ---------- Construcción de la interfaz ----------
 
         private void ConstruirInterfaz(string nombreJugador)
         {
-            Estilo.AplicarFormulario(this, "Arena Elemental - Arma tu equipo", 980, 590);
+            Estilo.AplicarFormulario(this, "Arena Elemental - Arma tu equipo", 1260, 660);
 
-            Controls.Add(Estilo.CrearEtiqueta("Catálogo de personajes (doble clic para agregar)", 16, 12, 600, 22, 11f, true));
+            ConstruirEncabezado();
+            ConstruirGaleria();
+            ConstruirVistaPrevia();
+            ConstruirPanelEquipo(nombreJugador);
+        }
 
-            lvCatalogo = new ListView();
-            lvCatalogo.SetBounds(16, 40, 620, 290);
-            lvCatalogo.View = View.Details;
-            lvCatalogo.FullRowSelect = true;
-            lvCatalogo.MultiSelect = false;
-            lvCatalogo.HideSelection = false;
-            lvCatalogo.GridLines = false;
-            lvCatalogo.BackColor = Estilo.Panel;
-            lvCatalogo.ForeColor = Estilo.Texto;
-            lvCatalogo.BorderStyle = BorderStyle.None;
-            lvCatalogo.Columns.Add("Nombre", 110);
-            lvCatalogo.Columns.Add("Elemento", 75);
-            lvCatalogo.Columns.Add("HP", 45);
-            lvCatalogo.Columns.Add("ATK", 45);
-            lvCatalogo.Columns.Add("DEF", 45);
-            lvCatalogo.Columns.Add("ENG", 45);
-            lvCatalogo.Columns.Add("EMP", 45);
-            lvCatalogo.Columns.Add("Habilidad", 190);
-            lvCatalogo.SelectedIndexChanged += delegate { MostrarDetalle(); };
-            lvCatalogo.DoubleClick += delegate { AgregarSeleccionado(); };
-            Controls.Add(lvCatalogo);
+        private void ConstruirEncabezado()
+        {
+            Label titulo = Estilo.CrearEtiqueta("ARMA TU EQUIPO", 20, 8, 600, 36, 22f, true);
+            titulo.ForeColor = Color.Gold;
+            Controls.Add(titulo);
 
-            lblDetalle = Estilo.CrearEtiqueta(string.Empty, 16, 340, 620, 100, 10f, false);
-            lblDetalle.BackColor = Estilo.Panel;
-            lblDetalle.Padding = new Padding(8, 6, 8, 6);
-            Controls.Add(lblDetalle);
+            Label sub = Estilo.CrearEtiqueta("Elige 3 personajes. El 1.º sale al campo y los otros esperan en la cola de relevos, en el orden que pongas.",
+                                             22, 44, 900, 20, 9.5f, false);
+            sub.ForeColor = Estilo.TextoSuave;
+            Controls.Add(sub);
 
-            btnAgregar = Estilo.CrearBoton("Agregar al equipo  >>", 16, 450, 220, 38);
+            btnVolver = new Button();
+            btnVolver.SetBounds(1130, 14, 110, 32);
+            Estilo.EstilizarBoton(btnVolver, "Volver", Estilo.PanelClaro);
+            btnVolver.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
+            Controls.Add(btnVolver);
+        }
+
+        /// <summary>La galería: 4 columnas (Fuego, Agua, Tierra, Aire) con 3 personajes cada una.</summary>
+        private void ConstruirGaleria()
+        {
+            string[] columnas = new string[] { "FUEGO", "AGUA", "TIERRA", "AIRE" };
+            Elemento[] elementos = new Elemento[] { Elemento.Fuego, Elemento.Agua, Elemento.Tierra, Elemento.Aire };
+            for (int c = 0; c < columnas.Length; c++)
+            {
+                Label l = Estilo.CrearEtiqueta(columnas[c] + "  ·  " + Estilo.RolDe(elementos[c]), 20 + c * 148, 72, 140, 18, 8.5f, true);
+                l.ForeColor = Estilo.ColorDe(elementos[c]);
+                Controls.Add(l);
+            }
+
+            miniaturas = new MiniaturaPersonaje[catalogo.Count];
+            for (int i = 0; i < catalogo.Count; i++)
+            {
+                int columna = i / 3;
+                int fila = i % 3;
+                MiniaturaPersonaje m = new MiniaturaPersonaje(catalogo[i]);
+                m.Location = new Point(20 + columna * 148, 94 + fila * 158);
+                Personaje p = catalogo[i];
+                m.Click += delegate { Seleccionar(p); };
+                m.DoubleClick += delegate { Seleccionar(p); AgregarSeleccionado(); };
+                Controls.Add(m);
+                miniaturas[i] = m;
+            }
+
+            // Panel con el triángulo y las habilidades del personaje seleccionado.
+            Panel panel = new Panel();
+            panel.SetBounds(20, 568, 584, 84);
+            panel.BackColor = PanelOscuro;
+            Controls.Add(panel);
+            Estilo.Redondear(panel, 12);
+
+            lblDetalle = Estilo.CrearEtiqueta(string.Empty, 12, 6, 562, 74, 9f, false);
+            panel.Controls.Add(lblDetalle);
+        }
+
+        private void ConstruirVistaPrevia()
+        {
+            vistaPrevia = new VistaCarta(false);
+            vistaPrevia.Location = new Point(624, 72);
+            Controls.Add(vistaPrevia);
+
+            btnAgregar = new Button();
+            btnAgregar.SetBounds(624, 500, 232, 44);
+            Estilo.EstilizarBoton(btnAgregar, "AGREGAR AL EQUIPO", Color.FromArgb(46, 160, 96));
             btnAgregar.Click += delegate { AgregarSeleccionado(); };
             Controls.Add(btnAgregar);
 
-            Label tri = Estilo.CrearEtiqueta("Triángulo elemental:  " + Estilo.Triangulo + "\nVentaja x1.5  ·  Desventaja x0.5",
-                                             16, 502, 620, 44, 10f, false);
-            tri.ForeColor = Color.Gold;
-            Controls.Add(tri);
+            lblConsejo = Estilo.CrearEtiqueta("Un clic en un personaje muestra su carta.\nDoble clic (o el botón) lo agrega a tu equipo.",
+                                              624, 554, 232, 60, 8.5f, false);
+            lblConsejo.ForeColor = Estilo.TextoSuave;
+            Controls.Add(lblConsejo);
+        }
 
-            // Columna derecha
-            Controls.Add(Estilo.CrearEtiqueta("Equipo de " + nombreJugador + " (el 1.º inicia)", 656, 12, 310, 22, 11f, true));
+        private void ConstruirPanelEquipo(string nombreJugador)
+        {
+            Label titulo = Estilo.CrearEtiqueta("TU EQUIPO", 876, 72, 364, 18, 9.5f, true);
+            titulo.ForeColor = Color.Gold;
+            Controls.Add(titulo);
 
-            lstEquipo = new ListBox();
-            lstEquipo.SetBounds(656, 40, 308, 84);
-            lstEquipo.BackColor = Estilo.Panel;
-            lstEquipo.ForeColor = Estilo.Texto;
-            lstEquipo.BorderStyle = BorderStyle.None;
-            lstEquipo.Font = new Font("Segoe UI", 10.5f);
-            lstEquipo.ItemHeight = 24;
-            Controls.Add(lstEquipo);
+            for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
+                CrearCasilla(i);
 
-            btnQuitar = Estilo.CrearBoton("Quitar", 656, 130, 98, 30);
-            btnSubir = Estilo.CrearBoton("Subir", 760, 130, 98, 30);
-            btnBajar = Estilo.CrearBoton("Bajar", 864, 130, 100, 30);
-            btnQuitar.Click += delegate { QuitarSeleccionado(); };
-            btnSubir.Click += delegate { MoverSeleccionado(-1); };
-            btnBajar.Click += delegate { MoverSeleccionado(1); };
-            Controls.Add(btnQuitar);
-            Controls.Add(btnSubir);
-            Controls.Add(btnBajar);
+            Label etNombre = Estilo.CrearEtiqueta("NOMBRE DEL EQUIPO", 876, 316, 364, 18, 8.5f, true);
+            etNombre.ForeColor = Color.Gold;
+            Controls.Add(etNombre);
 
-            Controls.Add(Estilo.CrearEtiqueta("Nombre del equipo", 656, 176, 308, 20, 10f, true));
             txtNombreEquipo = new TextBox();
-            txtNombreEquipo.SetBounds(656, 198, 308, 26);
+            txtNombreEquipo.SetBounds(876, 336, 364, 30);
+            txtNombreEquipo.Font = new Font("Segoe UI", 11f);
+            txtNombreEquipo.BackColor = Color.FromArgb(16, 20, 32);
+            txtNombreEquipo.ForeColor = Color.White;
+            txtNombreEquipo.BorderStyle = BorderStyle.FixedSingle;
             txtNombreEquipo.MaxLength = 40;
             txtNombreEquipo.Text = "Equipo de " + nombreJugador;
-            txtNombreEquipo.TextChanged += delegate { ActualizarEstado(); };
+            txtNombreEquipo.TextChanged += delegate { ActualizarBotonCombatir(); };
             Controls.Add(txtNombreEquipo);
 
-            Controls.Add(Estilo.CrearEtiqueta("Escenario", 656, 238, 308, 20, 10f, true));
-            cboEscenario = new ComboBox();
-            cboEscenario.SetBounds(656, 260, 308, 26);
-            cboEscenario.DropDownStyle = ComboBoxStyle.DropDownList;
-            cboEscenario.SelectedIndexChanged += delegate { MostrarEscenario(); };
-            Controls.Add(cboEscenario);
+            Label etEscenario = Estilo.CrearEtiqueta("ESCENARIO", 876, 380, 364, 18, 8.5f, true);
+            etEscenario.ForeColor = Color.Gold;
+            Controls.Add(etEscenario);
 
-            lblEscenario = Estilo.CrearEtiqueta(string.Empty, 656, 292, 308, 70, 9.5f, false);
+            botonesEscenario = new Button[escenarios.Count];
+            for (int i = 0; i < escenarios.Count; i++)
+            {
+                int indice = i;
+                Button b = new Button();
+                b.SetBounds(876 + (i % 2) * 186, 402 + (i / 2) * 42, 178, 36);
+                Color color = Estilo.FondoDe(escenarios[i].ElementoAfin);
+                Estilo.EstilizarBoton(b, escenarios[i].Nombre, Color.FromArgb(color.R + 30, color.G + 30, color.B + 30));
+                b.Click += delegate { ElegirEscenario(indice); };
+                Controls.Add(b);
+                botonesEscenario[i] = b;
+            }
+
+            lblEscenario = Estilo.CrearEtiqueta(string.Empty, 876, 490, 364, 50, 9f, false);
             lblEscenario.ForeColor = Estilo.TextoSuave;
             Controls.Add(lblEscenario);
 
-            btnCombatir = Estilo.CrearBoton("¡A COMBATIR!", 656, 440, 308, 52);
-            btnCombatir.BackColor = Color.FromArgb(46, 160, 96);
-            btnCombatir.Font = new Font("Segoe UI", 13f, FontStyle.Bold);
+            btnCombatir = new Button();
+            btnCombatir.SetBounds(876, 560, 364, 62);
+            Estilo.EstilizarBoton(btnCombatir, "¡A COMBATIR!", Color.FromArgb(46, 160, 96));
+            btnCombatir.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
             btnCombatir.Click += delegate { DialogResult = DialogResult.OK; Close(); };
             Controls.Add(btnCombatir);
-
-            btnCancelar = Estilo.CrearBoton("Cancelar", 656, 500, 308, 34);
-            btnCancelar.BackColor = Estilo.PanelClaro;
-            btnCancelar.Click += delegate { DialogResult = DialogResult.Cancel; Close(); };
-            Controls.Add(btnCancelar);
         }
 
-        private void AgregarFilaCatalogo(Personaje p)
+        /// <summary>Una casilla del equipo: imagen, nombre, su lugar en la cola y los botones para subir, bajar o quitar.</summary>
+        private void CrearCasilla(int i)
         {
-            ListViewItem item = new ListViewItem(p.Nombre);
-            item.SubItems.Add(p.Elemento.ToString());
-            item.SubItems.Add(p.HpMax.ToString());
-            item.SubItems.Add(p.Atk.ToString());
-            item.SubItems.Add(p.Defensa.ToString());
-            item.SubItems.Add(p.EnergiaMax.ToString());
-            item.SubItems.Add(p.Empatia.ToString());
-            item.SubItems.Add(p.NombreHabilidad);
-            item.BackColor = Estilo.FondoDe(p.Elemento);
-            item.ForeColor = Estilo.Texto;
-            item.Tag = p;
-            lvCatalogo.Items.Add(item);
+            Panel panel = new Panel();
+            panel.SetBounds(876, 96 + i * 74, 364, 66);
+            panel.BackColor = PanelOscuro;
+            Controls.Add(panel);
+            Estilo.Redondear(panel, 12);
+            casilla[i] = panel;
+
+            casillaImagen[i] = new PictureBox();
+            casillaImagen[i].SetBounds(5, 5, 56, 56);
+            panel.Controls.Add(casillaImagen[i]);
+
+            casillaNombre[i] = Estilo.CrearEtiqueta(string.Empty, 68, 8, 190, 24, 12f, true);
+            panel.Controls.Add(casillaNombre[i]);
+
+            casillaRol[i] = Estilo.CrearEtiqueta(string.Empty, 68, 36, 200, 20, 8.5f, true);
+            panel.Controls.Add(casillaRol[i]);
+
+            int indice = i;
+            casillaSubir[i] = CrearBotonCasilla(panel, 270, "▲");
+            casillaSubir[i].Click += delegate { MoverEnEquipo(indice, -1); };
+            casillaBajar[i] = CrearBotonCasilla(panel, 302, "▼");
+            casillaBajar[i].Click += delegate { MoverEnEquipo(indice, 1); };
+            casillaQuitar[i] = CrearBotonCasilla(panel, 334, "×");
+            casillaQuitar[i].Click += delegate { QuitarDelEquipo(indice); };
+            casillaQuitar[i].BackColor = Color.FromArgb(150, 50, 60);
         }
 
-        private Personaje CatalogoSeleccionado()
+        private Button CrearBotonCasilla(Panel panel, int x, string texto)
         {
-            if (lvCatalogo.SelectedItems.Count == 0) return null;
-            return (Personaje)lvCatalogo.SelectedItems[0].Tag;
+            Button b = new Button();
+            b.SetBounds(x, 17, 28, 32);
+            Estilo.EstilizarBoton(b, texto, Estilo.PanelClaro);
+            b.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            b.Padding = new Padding(0);
+            panel.Controls.Add(b);
+            return b;
         }
 
-        private void MostrarDetalle()
-        {
-            Personaje p = CatalogoSeleccionado();
-            lblDetalle.Text = p == null ? string.Empty : Estilo.DescripcionCompleta(p);
-        }
+        // ---------- Selección y equipo ----------
 
-        private void MostrarEscenario()
+        /// <summary>Muestra la carta del personaje y sus habilidades.</summary>
+        private void Seleccionar(Personaje p)
         {
-            Escenario s = EscenarioElegido;
-            lblEscenario.Text = s == null ? string.Empty : s.Descripcion + "\nBonus: +" + s.BonusAtaquePct + "% de ATK a las cartas de " + s.ElementoAfin + ".";
+            seleccionado = p;
+            vistaPrevia.ActualizarDatos(p, Estilo.RolDe(p.Elemento), false);
+            lblDetalle.Text = Estilo.DescripcionTriangulo(p) + "\n" + Estilo.DescripcionHabilidad(p.HabilidadAtaque)
+                              + "\n" + Estilo.DescripcionHabilidad(p.HabilidadUtilidad);
+
+            foreach (MiniaturaPersonaje m in miniaturas)
+                m.Seleccionada = (m.Personaje == p);
+            ActualizarBotonAgregar();
         }
 
         private void AgregarSeleccionado()
         {
-            Personaje p = CatalogoSeleccionado();
-            if (p == null) return;
-            if (equipo.Count >= EquipoCombate.TamanoEquipo)
-            {
-                MessageBox.Show("El equipo ya tiene " + EquipoCombate.TamanoEquipo + " personajes. Quita uno primero.",
-                                "Equipo completo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (seleccionado == null || equipo.Contains(seleccionado) || equipo.Count >= EquipoCombate.TamanoEquipo)
                 return;
-            }
-            foreach (Personaje existente in equipo)
+            equipo.Add(seleccionado);
+            RefrescarEquipo();
+        }
+
+        private void QuitarDelEquipo(int indice)
+        {
+            if (indice < 0 || indice >= equipo.Count) return;
+            equipo.RemoveAt(indice);
+            RefrescarEquipo();
+        }
+
+        private void MoverEnEquipo(int indice, int delta)
+        {
+            int destino = indice + delta;
+            if (indice < 0 || indice >= equipo.Count || destino < 0 || destino >= equipo.Count) return;
+            Personaje temporal = equipo[indice];
+            equipo[indice] = equipo[destino];
+            equipo[destino] = temporal;
+            RefrescarEquipo();
+        }
+
+        /// <summary>Actualiza las 3 casillas, las marcas de la galería y los botones.</summary>
+        private void RefrescarEquipo()
+        {
+            for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
             {
-                if (existente.Id == p.Id)
+                bool ocupada = i < equipo.Count;
+                if (ocupada)
                 {
-                    MessageBox.Show(p.Nombre + " ya está en tu equipo.", "Repetido", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    Personaje p = equipo[i];
+                    casillaImagen[i].BackColor = Estilo.ColorDe(p.Elemento);
+                    casillaImagen[i].Image = ObtenerImagenCasilla(p);
+                    casillaNombre[i].Text = p.Nombre + "  ·  " + p.Elemento;
+                    casillaNombre[i].ForeColor = Color.White;
+                    casillaRol[i].Text = i == 0 ? "1.º  ·  INICIA EN EL CAMPO" : (i + 1) + ".º  ·  EN LA COLA DE RELEVO";
+                    casillaRol[i].ForeColor = i == 0 ? Color.Gold : Estilo.TextoSuave;
                 }
+                else
+                {
+                    casillaImagen[i].BackColor = Color.FromArgb(28, 32, 46);
+                    casillaImagen[i].Image = null;
+                    casillaNombre[i].Text = "— vacío —";
+                    casillaNombre[i].ForeColor = Estilo.TextoSuave;
+                    casillaRol[i].Text = i == 0 ? "Elige quién inicia el combate" : "Elige otro personaje";
+                    casillaRol[i].ForeColor = Estilo.TextoSuave;
+                }
+                casillaSubir[i].Visible = ocupada;
+                casillaBajar[i].Visible = ocupada;
+                casillaQuitar[i].Visible = ocupada;
+                casillaSubir[i].Enabled = i > 0;
+                casillaBajar[i].Enabled = i < equipo.Count - 1;
             }
-            equipo.Add(p);
-            RefrescarEquipo(equipo.Count - 1);
+
+            foreach (MiniaturaPersonaje m in miniaturas)
+                m.PosicionEquipo = equipo.IndexOf(m.Personaje) + 1;
+
+            ActualizarBotonAgregar();
+            ActualizarBotonCombatir();
         }
 
-        private void QuitarSeleccionado()
+        private Image ObtenerImagenCasilla(Personaje p)
         {
-            int i = lstEquipo.SelectedIndex;
-            if (i < 0) return;
-            equipo.RemoveAt(i);
-            RefrescarEquipo(Math.Min(i, equipo.Count - 1));
+            try
+            {
+                return Ilustraciones.ObtenerArte(p, 56, 56);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
-        private void MoverSeleccionado(int delta)
+        private void ActualizarBotonAgregar()
         {
-            int i = lstEquipo.SelectedIndex;
-            int j = i + delta;
-            if (i < 0 || j < 0 || j >= equipo.Count) return;
-            Personaje tmp = equipo[i];
-            equipo[i] = equipo[j];
-            equipo[j] = tmp;
-            RefrescarEquipo(j);
+            bool yaEsta = seleccionado != null && equipo.Contains(seleccionado);
+            bool completo = equipo.Count >= EquipoCombate.TamanoEquipo;
+            btnAgregar.Enabled = seleccionado != null && !yaEsta && !completo;
+            if (yaEsta) btnAgregar.Text = "YA ESTÁ EN TU EQUIPO";
+            else if (completo) btnAgregar.Text = "EQUIPO COMPLETO";
+            else btnAgregar.Text = "AGREGAR AL EQUIPO";
         }
 
-        private void RefrescarEquipo(int seleccionar)
+        private void ActualizarBotonCombatir()
         {
-            lstEquipo.Items.Clear();
-            for (int i = 0; i < equipo.Count; i++)
-                lstEquipo.Items.Add((i + 1) + ".  " + equipo[i].Nombre + "  [" + equipo[i].Elemento + "]");
-            if (seleccionar >= 0 && seleccionar < lstEquipo.Items.Count) lstEquipo.SelectedIndex = seleccionar;
-            ActualizarEstado();
+            bool listo = equipo.Count == EquipoCombate.TamanoEquipo && NombreEquipo.Length > 0;
+            btnCombatir.Enabled = listo;
+            btnCombatir.BackColor = listo ? Color.FromArgb(46, 160, 96) : Estilo.PanelClaro;
+            if (equipo.Count < EquipoCombate.TamanoEquipo)
+                btnCombatir.Text = "Elige " + (EquipoCombate.TamanoEquipo - equipo.Count) + " personaje(s) más";
+            else if (NombreEquipo.Length == 0)
+                btnCombatir.Text = "Escribe un nombre para el equipo";
+            else
+                btnCombatir.Text = "¡A COMBATIR!";
         }
 
-        private void ActualizarEstado()
+        // ---------- Escenario ----------
+
+        private void ElegirEscenario(int indice)
         {
-            btnCombatir.Enabled = equipo.Count == EquipoCombate.TamanoEquipo
-                                  && EscenarioElegido != null
-                                  && NombreEquipo.Length > 0;
-            btnCombatir.Text = equipo.Count == EquipoCombate.TamanoEquipo
-                ? "¡A COMBATIR!"
-                : "Elige " + (EquipoCombate.TamanoEquipo - equipo.Count) + " personaje(s) más";
-            btnCombatir.BackColor = btnCombatir.Enabled ? Color.FromArgb(46, 160, 96) : Estilo.PanelClaro;
+            if (indice < 0 || indice >= escenarios.Count) return;
+            indiceEscenario = indice;
+
+            for (int i = 0; i < botonesEscenario.Length; i++)
+            {
+                bool elegido = (i == indice);
+                botonesEscenario[i].FlatAppearance.BorderSize = elegido ? 3 : 0;
+                botonesEscenario[i].FlatAppearance.BorderColor = Color.Gold;
+            }
+
+            Escenario s = escenarios[indice];
+            lblEscenario.Text = s.Descripcion + "\nBonus: +" + s.BonusAtaquePct + "% de ATK a las cartas de " + s.ElementoAfin + ".";
         }
     }
 }

@@ -9,13 +9,19 @@ namespace ArenaElemental.Formularios
 {
     /// <summary>
     /// Pantalla de combate dibujada como una mesa de duelo:
-    ///  - Centro: la carta del jugador frente a la carta del rival, con los botones de acción en medio.
-    ///  - Arriba y abajo: la banca de cada equipo en un FlowLayoutPanel (la COLA de relevos, de izquierda a derecha).
+    ///  - Fondo: la imagen Imagenes/tablero.jpg (si no existe, un fondo oscuro liso).
+    ///  - Centro: la carta del jugador frente a la del rival, con los botones de acción entre las dos.
+    ///  - A los lados: la banca de cada equipo en un FlowLayoutPanel. Es la COLA de relevos: la primera carta
+    ///    (con borde dorado) es la que entraría en el próximo relevo.
     ///  - A la derecha: el registro de combate, que es la PILA del historial en un ListBox.
     /// </summary>
-    public class FrmCombate : Form
+    public class FrmCombate : FormularioModerno
     {
         private const int RetardoCpuMs = 900;
+
+        // Colores de los paneles oscuros (casi negros) que destacan sobre la imagen de fondo.
+        private static Color PanelOscuro = Color.FromArgb(12, 12, 16);
+        private static Color PanelOscuroTranslucido = Color.FromArgb(175, 8, 8, 12);
 
         private string nombreJugador;
         private Combate combate;
@@ -26,12 +32,12 @@ namespace ArenaElemental.Formularios
         private VistaCarta[] bancaJugador = new VistaCarta[EquipoCombate.TamanoEquipo - 1];
         private VistaCarta[] bancaRival = new VistaCarta[EquipoCombate.TamanoEquipo - 1];
 
-        private Panel mesa;
-        private Label lblTitulo, lblInstruccion, lblTerremoto, lblUltimaJugada;
-        private Label lblBancaJugador, lblBancaRival;
-        private Button btnAtacar, btnHabilidad, btnRelevo, btnPasar, btnRendirse;
+        private Label lblTitulo, lblTurno, lblInstruccion, lblTerremoto, lblUltimaJugada;
+        private Label lblBancaJugador, lblBancaRival, lblEquipoJugador, lblEquipoRival;
+        private Button btnAtacar, btnHabAtaque, btnHabUtilidad, btnRelevo, btnPasar, btnRendirse;
         private ListBox lstHistorial;
         private ContextMenuStrip menuAliados;
+        private ToolTip ayuda = new ToolTip();
 
         private Timer timerCpu;
         private Timer timerTemblor;
@@ -63,151 +69,212 @@ namespace ArenaElemental.Formularios
 
         private void ConstruirInterfaz()
         {
-            Estilo.AplicarFormulario(this, "Arena Elemental - Combate", 1246, 670);
+            Estilo.AplicarFormulario(this, "Arena Elemental - Combate", 1264, 500);
+            BackColor = Color.FromArgb(12, 18, 28);
+            CargarFondo();
 
-            lblTitulo = Estilo.CrearEtiqueta(string.Empty, 16, 8, 520, 28, 14f, true);
-            Controls.Add(lblTitulo);
+            ConstruirBarraSuperior();
+            ConstruirCampoDeDuelo();
+            ConstruirPanelRegistro();
+        }
+
+        /// <summary>Intenta poner Imagenes/tablero.jpg como fondo. Si no existe se queda el color liso.</summary>
+        private void CargarFondo()
+        {
+            Image fondo = Estilo.CargarImagen("tablero.jpg");
+            if (fondo == null) return;
+
+            BackgroundImage = fondo;
+            BackgroundImageLayout = ImageLayout.Stretch;
+        }
+
+        /// <summary>Franja oscura de arriba con el escenario, la ronda y el recordatorio de reglas.</summary>
+        private void ConstruirBarraSuperior()
+        {
+            Panel barra = new Panel();
+            barra.SetBounds(0, 0, 1264, 36);
+            barra.BackColor = PanelOscuro;
+            Controls.Add(barra);
+
+            lblTitulo = Estilo.CrearEtiqueta(string.Empty, 16, 4, 520, 28, 14f, true);
+            lblTitulo.ForeColor = Color.Gold;
+            barra.Controls.Add(lblTitulo);
 
             Label lblReglas = Estilo.CrearEtiqueta(
                 "Triángulo: " + Estilo.Triangulo + "   ·   Muerte súbita: ronda " + Combate.TurnoMuerteSubita,
-                540, 6, 344, 34, 8.5f, false);
-            lblReglas.ForeColor = Estilo.TextoSuave;
+                540, 2, 710, 32, 9f, false);
             lblReglas.TextAlign = ContentAlignment.MiddleRight;
-            Controls.Add(lblReglas);
+            barra.Controls.Add(lblReglas);
+        }
 
-            // La mesa: un panel verde donde se juega el duelo.
-            mesa = new Panel();
-            mesa.SetBounds(16, 44, 868, 620);
-            mesa.BackColor = Color.FromArgb(18, 64, 48);
-            Controls.Add(mesa);
-
-            // Banca del rival (arriba, a la derecha) y banca del jugador (abajo, a la izquierda).
-            lblBancaRival = CrearEtiquetaMesa(494, 4, 270, 18);
-            CrearBanca(494, 24, bancaRival);
+        /// <summary>Las dos cartas del campo, las dos bancas y la zona central con los botones.</summary>
+        private void ConstruirCampoDeDuelo()
+        {
+            // Nombres de los equipos sobre sus cartas.
+            lblEquipoJugador = CrearTitulo(string.Empty, 144, 232);
+            lblEquipoRival = CrearTitulo(string.Empty, 592, 232);
 
             cartaJugador = new VistaCarta(false);
-            cartaJugador.Location = new Point(104, 156);
-            mesa.Controls.Add(cartaJugador);
+            cartaJugador.Location = new Point(144, 70);
+            Controls.Add(cartaJugador);
 
             cartaRival = new VistaCarta(false);
-            cartaRival.Location = new Point(534, 156);
-            mesa.Controls.Add(cartaRival);
+            cartaRival.Location = new Point(592, 70);
+            Controls.Add(cartaRival);
 
-            lblBancaJugador = CrearEtiquetaMesa(104, 464, 330, 18);
-            CrearBanca(104, 484, bancaJugador);
+            // Bancas: mi banca a la izquierda, la del rival a la derecha.
+            lblBancaJugador = CrearTitulo(string.Empty, 4, 136);
+            CrearBanca(4, bancaJugador);
+            lblBancaRival = CrearTitulo(string.Empty, 828, 136);
+            CrearBanca(828, bancaRival);
 
-            // Zona central entre las dos cartas: VS, indicaciones y botones de acción.
-            Label vs = Estilo.CrearEtiqueta("VS", 334, 156, 200, 34, 20f, true);
-            vs.ForeColor = Color.Gold;
-            vs.TextAlign = ContentAlignment.MiddleCenter;
-            mesa.Controls.Add(vs);
+            // Zona central entre las dos cartas.
+            lblTurno = Estilo.CrearEtiqueta(string.Empty, 384, 70, 200, 44, 14f, true);
+            lblTurno.BackColor = PanelOscuroTranslucido;
+            lblTurno.TextAlign = ContentAlignment.MiddleCenter;
+            Controls.Add(lblTurno);
 
-            lblInstruccion = Estilo.CrearEtiqueta(string.Empty, 334, 192, 200, 44, 9.5f, false);
-            lblInstruccion.ForeColor = Color.Gold;
+            lblInstruccion = Estilo.CrearEtiqueta(string.Empty, 384, 118, 200, 36, 9f, false);
+            lblInstruccion.BackColor = PanelOscuroTranslucido;
             lblInstruccion.TextAlign = ContentAlignment.MiddleCenter;
-            mesa.Controls.Add(lblInstruccion);
+            Controls.Add(lblInstruccion);
 
-            btnAtacar = CrearBotonAccion("Atacar", 242, Color.FromArgb(200, 70, 60));
+            btnAtacar = CrearBotonAccion(160, Color.Crimson);
             btnAtacar.Click += delegate { EjecutarJugador(AccionCombate.Atacar()); };
 
             menuAliados = new ContextMenuStrip();
-            btnHabilidad = CrearBotonAccion("Habilidad", 286, Color.FromArgb(150, 80, 200));
-            btnHabilidad.Click += BtnHabilidad_Click;
+            btnHabAtaque = CrearBotonAccion(206, Color.FromArgb(88, 40, 140));
+            btnHabAtaque.Click += delegate { UsarHabilidadDelJugador(0); };
 
-            btnRelevo = CrearBotonAccion("Relevo", 330, Color.FromArgb(46, 120, 160));
+            btnHabUtilidad = CrearBotonAccion(252, Color.FromArgb(16, 122, 104));
+            btnHabUtilidad.Click += delegate { UsarHabilidadDelJugador(1); };
+
+            btnRelevo = CrearBotonAccion(298, Color.FromArgb(24, 110, 160));
             btnRelevo.Click += delegate { EjecutarJugador(AccionCombate.Relevar()); };
 
-            btnPasar = CrearBotonAccion("Pasar (+" + Combate.EnergiaAlDescansar + " ENG)", 374, Estilo.PanelClaro);
+            btnPasar = CrearBotonAccion(344, Color.FromArgb(70, 78, 100));
             btnPasar.Click += delegate { EjecutarJugador(AccionCombate.Pasar()); };
 
-            lblTerremoto = Estilo.CrearEtiqueta(string.Empty, 334, 420, 200, 34, 9.5f, true);
+            lblTerremoto = Estilo.CrearEtiqueta(string.Empty, 384, 394, 200, 28, 9.5f, true);
+            lblTerremoto.BackColor = PanelOscuroTranslucido;
             lblTerremoto.TextAlign = ContentAlignment.MiddleCenter;
-            mesa.Controls.Add(lblTerremoto);
+            Controls.Add(lblTerremoto);
 
-            // Columna derecha: el historial (pila) con estilo de registro de combate.
-            Controls.Add(Estilo.CrearEtiqueta("REGISTRO DE COMBATE (pila)", 900, 44, 330, 22, 10.5f, true));
+            Label vs = Estilo.CrearEtiqueta("VS", 384, 430, 200, 50, 28f, true);
+            vs.ForeColor = Color.Gold;
+            vs.TextAlign = ContentAlignment.MiddleCenter;
+            Controls.Add(vs);
+        }
+
+        /// <summary>Columna derecha: el historial (pila) con estilo de registro de combate.</summary>
+        private void ConstruirPanelRegistro()
+        {
+            Panel panel = new Panel();
+            panel.SetBounds(972, 44, 284, 448);
+            panel.BackColor = PanelOscuro;
+            Controls.Add(panel);
+            Estilo.Redondear(panel, 12);
+
+            Label titulo = Estilo.CrearEtiqueta("REGISTRO DE COMBATE (pila)", 12, 8, 260, 22, 10f, true);
+            titulo.ForeColor = Color.Gold;
+            panel.Controls.Add(titulo);
 
             lstHistorial = new ListBox();
-            lstHistorial.SetBounds(900, 68, 330, 420);
-            lstHistorial.BackColor = Color.FromArgb(14, 15, 24);
-            lstHistorial.ForeColor = Estilo.Texto;
+            lstHistorial.SetBounds(10, 34, 264, 288);
+            lstHistorial.BackColor = Color.FromArgb(6, 6, 9);
+            lstHistorial.ForeColor = Color.White;
             lstHistorial.BorderStyle = BorderStyle.None;
             lstHistorial.Font = new Font("Consolas", 9f);
             lstHistorial.SelectionMode = SelectionMode.None;
             lstHistorial.DrawMode = DrawMode.OwnerDrawVariable;
             lstHistorial.MeasureItem += Historial_MeasureItem;
             lstHistorial.DrawItem += Historial_DrawItem;
-            Controls.Add(lstHistorial);
+            panel.Controls.Add(lstHistorial);
 
-            Controls.Add(Estilo.CrearEtiqueta("Última jugada (Peek de la pila):", 900, 496, 330, 20, 9f, true));
-            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 900, 518, 330, 70, 9.5f, false);
-            lblUltimaJugada.ForeColor = Estilo.TextoSuave;
-            Controls.Add(lblUltimaJugada);
+            Label ultima = Estilo.CrearEtiqueta("Última jugada (Peek de la pila):", 12, 328, 260, 18, 8.5f, true);
+            ultima.ForeColor = Color.Gold;
+            panel.Controls.Add(ultima);
 
-            btnRendirse = Estilo.CrearBoton("Rendirse", 900, 616, 330, 38);
-            btnRendirse.BackColor = Color.FromArgb(150, 50, 50);
+            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 12, 348, 260, 46, 9f, false);
+            lblUltimaJugada.ForeColor = Color.White;
+            panel.Controls.Add(lblUltimaJugada);
+
+            btnRendirse = new Button();
+            btnRendirse.SetBounds(12, 398, 260, 38);
+            Estilo.EstilizarBoton(btnRendirse, "Rendirse", Color.FromArgb(130, 30, 40));
             btnRendirse.Click += delegate { Close(); };
-            Controls.Add(btnRendirse);
+            panel.Controls.Add(btnRendirse);
         }
 
-        private Label CrearEtiquetaMesa(int x, int y, int ancho, int alto)
+        private Label CrearTitulo(string texto, int x, int ancho)
         {
-            Label l = Estilo.CrearEtiqueta(string.Empty, x, y, ancho, alto, 9f, true);
-            mesa.Controls.Add(l);
+            Label l = Estilo.CrearEtiqueta(texto, x, 44, ancho, 22, 10.5f, true);
+            l.ForeColor = Color.Gold;
+            l.BackColor = PanelOscuroTranslucido;
+            Controls.Add(l);
             return l;
         }
 
-        /// <summary>Crea un FlowLayoutPanel con una carta pequeña por cada puesto de la banca.</summary>
-        private void CrearBanca(int x, int y, VistaCarta[] cartas)
+        /// <summary>
+        /// Crea una columna (FlowLayoutPanel casi negro) con una carta pequeña por cada puesto de la banca.
+        /// Las cartas se acomodan de arriba hacia abajo en el orden de la cola.
+        /// </summary>
+        private void CrearBanca(int x, VistaCarta[] cartas)
         {
             FlowLayoutPanel flujo = new FlowLayoutPanel();
-            flujo.SetBounds(x, y, 276, 128);
-            flujo.FlowDirection = FlowDirection.LeftToRight;
+            flujo.SetBounds(x, 68, 136, 426);
+            flujo.FlowDirection = FlowDirection.TopDown;
             flujo.WrapContents = false;
-            flujo.BackColor = Color.FromArgb(10, 42, 32);
-            flujo.Padding = new Padding(4);
-            mesa.Controls.Add(flujo);
+            flujo.BackColor = PanelOscuro;
+            flujo.ForeColor = Color.White;
+            flujo.Padding = new Padding(2);
+            Controls.Add(flujo);
+            Estilo.Redondear(flujo, 12);
 
             for (int i = 0; i < cartas.Length; i++)
             {
                 cartas[i] = new VistaCarta(true);
+                cartas[i].Margin = new Padding(2);
                 flujo.Controls.Add(cartas[i]);
             }
         }
 
-        private Button CrearBotonAccion(string texto, int y, Color color)
+        private Button CrearBotonAccion(int y, Color color)
         {
-            Button b = Estilo.CrearBoton(texto, 344, y, 180, 38);
-            b.BackColor = color;
-            mesa.Controls.Add(b);
+            Button b = new Button();
+            b.SetBounds(392, y, 184, 40);
+            Estilo.EstilizarBoton(b, string.Empty, color);
+            Controls.Add(b);
             return b;
         }
 
         // ---------- Acciones del jugador ----------
 
-        private void BtnHabilidad_Click(object sender, EventArgs e)
+        /// <summary>Usa la habilidad 0 (ataque) o 1 (utilidad). Si cura a un aliado, primero se elige a cuál.</summary>
+        private void UsarHabilidadDelJugador(int numero)
         {
             Personaje activo = combate.Jugador.Activo;
-            if (!(activo is CartaAgua))
+            Habilidad habilidad = activo.ObtenerHabilidad(numero);
+            if (!habilidad.RequiereAliado)
             {
-                EjecutarJugador(AccionCombate.Habilidad());
+                EjecutarJugador(AccionCombate.Habilidad(numero));
                 return;
             }
 
-            // La habilidad del Agua cura: se elige a qué aliado.
             menuAliados.Items.Clear();
             for (int i = 0; i < combate.Jugador.Miembros.Count; i++)
             {
                 Personaje aliado = combate.Jugador.Miembros[i];
                 if (!aliado.EstaVivo) continue;
                 int indice = i;
-                string texto = (aliado == activo ? "Curarse a sí misma" : "Curar a " + aliado.Nombre)
+                string texto = (aliado == activo ? "Curarse a sí mismo" : "Curar a " + aliado.Nombre)
                                + "  (" + aliado.Hp + "/" + aliado.HpMax + ")";
                 ToolStripMenuItem item = new ToolStripMenuItem(texto);
-                item.Click += delegate { EjecutarJugador(AccionCombate.HabilidadSobreAliado(indice)); };
+                item.Click += delegate { EjecutarJugador(AccionCombate.HabilidadSobreAliado(numero, indice)); };
                 menuAliados.Items.Add(item);
             }
-            menuAliados.Show(btnHabilidad, new Point(0, btnHabilidad.Height));
+            Button boton = numero == 0 ? btnHabAtaque : btnHabUtilidad;
+            menuAliados.Show(boton, new Point(0, boton.Height));
         }
 
         private void EjecutarJugador(AccionCombate accion)
@@ -289,6 +356,8 @@ namespace ArenaElemental.Formularios
             {
                 if (timerCpu != null) { timerCpu.Stop(); timerCpu.Dispose(); }
                 if (timerTemblor != null) { timerTemblor.Stop(); timerTemblor.Dispose(); }
+                if (BackgroundImage != null) BackgroundImage.Dispose();
+                ayuda.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -305,31 +374,64 @@ namespace ArenaElemental.Formularios
             ActualizarBanca(combate.Jugador, bancaJugador, lblBancaJugador, "MI BANCA");
             ActualizarBanca(combate.Rival, bancaRival, lblBancaRival, "BANCA RIVAL");
 
+            // Nombre de cada equipo con la cantidad de personajes caídos.
+            lblEquipoJugador.Text = combate.Jugador.Nombre.ToUpper() + "  ·  Caídos: " + (combate.Jugador.Miembros.Count - combate.Jugador.Vivos);
+            lblEquipoRival.Text = combate.Rival.Nombre.ToUpper() + "  ·  Caídos: " + (combate.Rival.Miembros.Count - combate.Rival.Vivos);
+
             bool turnoJugador = combate.EsTurnoDelJugador;
             Personaje activo = combate.Jugador.Activo;
             string motivo;
 
             lblTitulo.Text = combate.Escenario.Nombre + "   ·   Ronda " + combate.Turno;
 
-            if (combate.Terminado) lblInstruccion.Text = "El combate terminó.";
-            else if (turnoJugador) lblInstruccion.Text = "Tu turno: " + activo.Nombre + ".\nElige una acción.";
-            else lblInstruccion.Text = "Turno del rival...";
+            if (combate.Terminado)
+            {
+                lblTurno.Text = "FIN";
+                lblTurno.ForeColor = Color.White;
+                lblInstruccion.Text = "El combate terminó.";
+            }
+            else if (turnoJugador)
+            {
+                lblTurno.Text = "TU TURNO";
+                lblTurno.ForeColor = Color.Gold;
+                lblInstruccion.Text = "Juega " + activo.Nombre + ". Elige una acción.";
+            }
+            else
+            {
+                lblTurno.Text = "TURNO RIVAL";
+                lblTurno.ForeColor = Color.IndianRed;
+                lblInstruccion.Text = combate.Rival.Activo.Nombre + " está pensando...";
+            }
+            lblInstruccion.ForeColor = Color.White;
 
+            btnAtacar.Text = "Atacar\nataque básico";
             btnAtacar.Enabled = turnoJugador;
+            btnPasar.Text = "Pasar\n+" + Combate.EnergiaAlDescansar + " ENG";
             btnPasar.Enabled = turnoJugador;
 
-            btnHabilidad.Text = activo.NombreHabilidad + "  (" + activo.CostoHabilidad + " ENG"
-                                + (activo.CooldownActual > 0 ? ", recarga " + activo.CooldownActual : string.Empty) + ")";
-            btnHabilidad.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Habilidad(), out motivo);
+            ActualizarBotonHabilidad(btnHabAtaque, activo, 0, turnoJugador);
+            ActualizarBotonHabilidad(btnHabUtilidad, activo, 1, turnoJugador);
 
             Personaje siguiente = combate.Jugador.ProximoRelevo;
-            btnRelevo.Text = siguiente == null ? "Relevo (banca vacía)" : "Relevo: entra " + siguiente.Nombre;
+            btnRelevo.Text = siguiente == null ? "Relevo\nbanca vacía" : "Relevo\nentra " + siguiente.Nombre;
             btnRelevo.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Relevar(), out motivo);
 
             btnRendirse.Enabled = !combate.Terminado;
 
             ActualizarAvisoTerremoto();
             LlenarHistorial();
+        }
+
+        /// <summary>Pone en el botón el nombre de la habilidad y su costo (o la recarga), y la activa solo si se puede usar.</summary>
+        private void ActualizarBotonHabilidad(Button boton, Personaje activo, int numero, bool turnoJugador)
+        {
+            Habilidad h = activo.ObtenerHabilidad(numero);
+            string detalle = h.CooldownActual > 0
+                ? "recarga " + h.CooldownActual + (h.CooldownActual == 1 ? " turno" : " turnos")
+                : h.Tipo + " · " + h.Costo + " ENG";
+            boton.Text = h.Nombre + "\n" + detalle;
+            boton.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Habilidad(numero), out detalle);
+            ayuda.SetToolTip(boton, h.Descripcion);
         }
 
         /// <summary>Muestra en las cartas pequeñas lo que hay en la cola: la primera es la que entra en el próximo relevo.</summary>
@@ -340,7 +442,8 @@ namespace ArenaElemental.Formularios
             {
                 if (i < cola.Length)
                 {
-                    string estado = i == 0 ? "PRÓXIMO" : (i + 1) + ".º EN COLA";
+                    string estado = i == 0 ? "SIGUE EN ENTRAR" : (i + 1) + ".º EN COLA";
+                    cartas[i].EsSiguiente = (i == 0);
                     cartas[i].ActualizarDatos(cola[i], estado, false);
                     cartas[i].Visible = true;
                 }
@@ -349,8 +452,7 @@ namespace ArenaElemental.Formularios
                     cartas[i].Visible = false;
                 }
             }
-            int caidos = equipo.Miembros.Count - equipo.Vivos;
-            titulo.Text = nombre + " (cola de relevo)   ·   Caídos: " + caidos;
+            titulo.Text = nombre;
         }
 
         /// <summary>Cuenta regresiva del Terremoto y, si ocurrió en esta ronda, la ventana tiembla.</summary>
@@ -358,9 +460,10 @@ namespace ArenaElemental.Formularios
         {
             if (combate.Terminado)
             {
-                lblTerremoto.Text = string.Empty;
+                lblTerremoto.Visible = false;
                 return;
             }
+            lblTerremoto.Visible = true;
             if (combate.TerremotoEstaRonda)
             {
                 lblTerremoto.Text = "¡TERREMOTO esta ronda!";
@@ -374,7 +477,7 @@ namespace ArenaElemental.Formularios
             else
             {
                 lblTerremoto.Text = "Terremoto en " + combate.RondasParaTerremoto + " ronda(s)";
-                lblTerremoto.ForeColor = Estilo.TextoSuave;
+                lblTerremoto.ForeColor = Color.White;
             }
         }
 
@@ -437,12 +540,12 @@ namespace ArenaElemental.Formularios
 
         private Color ColorDeLinea(string texto)
         {
-            if (texto.StartsWith("—")) return Estilo.TextoSuave;
+            if (texto.StartsWith("—")) return Color.Gold;
             if (texto.Contains("TERREMOTO") || texto.StartsWith("   ")) return Color.Orange;
             if (texto.Contains("derrotado") || texto.Contains("Has sido")) return Color.IndianRed;
             if (texto.Contains("Victoria") || texto.Contains("MUERTE")) return Color.Gold;
             if (texto.Contains("cura")) return Color.LightGreen;
-            return Estilo.Texto;
+            return Color.White;
         }
     }
 }
