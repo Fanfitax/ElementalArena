@@ -57,4 +57,42 @@ namespace ArenaElemental.Datos
             }
         }
     }
+
+    /// <summary>
+    /// Una fila del ranking: un jugador con sus totales y sus puntos.
+    /// Puntos: victoria = 3, derrota = 1 (por jugar), abandono = 0.
+    /// </summary>
+    public class PuestoRanking
+    {
+        public const int PuntosPorVictoria = 3;
+        public const int PuntosPorDerrota = 1;
+
+        public PuestoRanking(string jugador, List<EstadisticaPartida> partidas)
+        {
+            ResumenJugador r = new ResumenJugador(partidas);
+
+            Jugador = jugador;
+            Partidas = r.Partidas;
+            Victorias = r.Victorias;
+            Derrotas = r.Derrotas;
+            PorcentajeVictorias = r.PorcentajeVictorias;
+            DanoTotal = r.DanoTotal;
+            Puntos = Victorias * PuntosPorVictoria + Derrotas * PuntosPorDerrota;
+        }
+
+        public int Posicion { get; set; }
+        public string Jugador { get; private set; }
+        public int Puntos { get; private set; }
+        public int Partidas { get; private set; }
+        public int Victorias { get; private set; }
+        public int Derrotas { get; private set; }
+        public double PorcentajeVictorias { get; private set; }
+        public int DanoTotal { get; private set; }
+
+        /// <summary>El porcentaje de victorias ya escrito para la tabla (por ejemplo "66.7%").</summary>
+        public string Efectividad
+        {
+            get { return PorcentajeVictorias.ToString("0.#") + "%"; }
+        }
+    }
 }

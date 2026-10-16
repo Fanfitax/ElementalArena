@@ -29,24 +29,34 @@ namespace ArenaElemental.Formularios
     {
         private const int RetardoCpuMs = 900;
 
-        // Posiciones en X de las columnas del tablero (el formulario mide 1264 de ancho).
-        private const int XBancaJugador = 4;
-        private const int XCartaJugador = 206;
-        private const int XCentro = 442;
-        private const int AnchoCentro = 164;
-        private const int XCartaRival = 610;
-        private const int XBancaRival = 846;
+        // Tamaño de la ventana y posiciones del tablero. Las piezas son pocas y de tamaño contenido
+        // para que la imagen del escenario se vea entre ellas: bancas a los lados, las dos cartas del campo,
+        // los botones en el centro y el registro abajo a la izquierda. Abajo a la derecha queda libre.
+        private const int AnchoVentana = 1120;
+        private const int AltoVentana = 560;
+        private const int YTitulos = 46;
+        private const int YCampo = 74;
+        private const int XBancaJugador = 14;
+        private const int XCartaJugador = 222;
+        private const int XCentro = 470;
+        private const int AnchoCentro = 180;
+        private const int XCartaRival = 698;
+        private const int XBancaRival = 908;
         private const int AnchoBanca = 198;
-        private const int XRegistro = 1048;
 
         // Textos flotantes: cuánto viven y cuánto suben (en pasos de 30 ms).
         private const int VidaTextoFlotante = 50;
         private const int AlturaTextoFlotante = 100;
         private const int EsperaTerremoto = 24;
 
-        // Colores de los paneles oscuros (casi negros) que destacan sobre la imagen de fondo.
+        // Un golpe que quita este % de la vida máxima (o más) hace temblar un poco la ventana.
+        private const int GolpeFuertePct = 25;
+
+        // Colores de los paneles oscuros que destacan sobre la imagen de fondo: son translúcidos para que
+        // se siga viendo el escenario por detrás.
         private static Color PanelOscuro = Color.FromArgb(12, 12, 16);
-        private static Color PanelOscuroTranslucido = Color.FromArgb(175, 8, 8, 12);
+        private static Color PanelOscuroTranslucido = Color.FromArgb(150, 8, 8, 12);
+        private static Color PanelBancaTranslucido = Color.FromArgb(150, 8, 8, 12);
 
         private string nombreJugador;
         private Combate combate;
@@ -65,7 +75,7 @@ namespace ArenaElemental.Formularios
 
         private Label lblTitulo, lblTurno, lblInstruccion, lblTerremoto, lblUltimaJugada;
         private Label lblBancaJugador, lblBancaRival, lblEquipoJugador, lblEquipoRival;
-        private Button btnAtacar, btnHabAtaque, btnHabUtilidad, btnRelevo, btnPasar, btnRendirse;
+        private Button btnAtacar, btnHabAtaque, btnHabUtilidad, btnRelevo, btnPasar, btnRendirse, btnReglas;
         private ListBox lstHistorial;
         private ContextMenuStrip menuAliados;
         private int numeroHabilidadPendiente;   // la habilidad que espera que se elija a qué aliado curar
@@ -74,6 +84,8 @@ namespace ArenaElemental.Formularios
         private Timer timerCpu;
         private Timer timerTemblor;
         private int pasosTemblor;
+        private int pasosTotalesTemblor;
+        private int amplitudTemblor;
         private int ultimaRondaConTemblor;
         private Point posicionOriginal;
         private bool partidaGuardada;
@@ -82,6 +94,10 @@ namespace ArenaElemental.Formularios
         private Timer timerFlotantes;
         private List<TextoFlotante> flotantes = new List<TextoFlotante>();
         private Font fuenteFlotante = new Font("Segoe UI", 18f, FontStyle.Bold);
+        private Font fuenteAviso = new Font("Segoe UI", 11f, FontStyle.Bold);
+
+        // Partículas (chispas, brillos, escombros) sobre el tablero.
+        private EfectosCombate efectos;
 
         // Anuncio de eventos: se muestra un instante después de la jugada para que no se pisen los efectos.
         private Timer timerEvento;
@@ -128,6 +144,7 @@ namespace ArenaElemental.Formularios
             }
 
             ConstruirInterfaz();
+            efectos = new EfectosCombate(this);
 
             timerCpu = new Timer();
             timerCpu.Interval = RetardoCpuMs;
@@ -180,7 +197,7 @@ namespace ArenaElemental.Formularios
 
         private void ConstruirInterfaz()
         {
-            Estilo.AplicarFormulario(this, "Arena Elemental - Combate", 1264, 500);
+            Estilo.AplicarFormulario(this, "Arena Elemental - Combate", AnchoVentana, AltoVentana);
             BackColor = Color.FromArgb(12, 18, 28);
             CargarFondoDelEscenario();
 
@@ -245,7 +262,7 @@ namespace ArenaElemental.Formularios
             {
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.DrawImage(original, new Rectangle(0, 0, ancho, alto), zona, GraphicsUnit.Pixel);
-                using (SolidBrush velo = new SolidBrush(Color.FromArgb(70, 0, 0, 0)))
+                using (SolidBrush velo = new SolidBrush(Color.FromArgb(32, 0, 0, 0)))
                 {
                     g.FillRectangle(velo, 0, 0, ancho, alto);
                 }
@@ -253,38 +270,50 @@ namespace ArenaElemental.Formularios
             return tablero;
         }
 
-        /// <summary>Franja oscura de arriba con el escenario, la ronda y el recordatorio de reglas.</summary>
+        /// <summary>Franja oscura de arriba con el escenario, la ronda, el recordatorio del triángulo y los botones Reglas y Rendirse.</summary>
         private void ConstruirBarraSuperior()
         {
             Panel barra = new Panel();
-            barra.SetBounds(0, 0, 1264, 36);
-            barra.BackColor = PanelOscuro;
+            barra.SetBounds(0, 0, AnchoVentana, 36);
+            barra.BackColor = Color.FromArgb(185, 10, 10, 14);
             Controls.Add(barra);
 
-            lblTitulo = Estilo.CrearEtiqueta(string.Empty, 16, 4, 520, 28, 14f, true);
+            lblTitulo = Estilo.CrearEtiqueta(string.Empty, 16, 4, 420, 28, 14f, true);
             lblTitulo.ForeColor = Color.Gold;
             barra.Controls.Add(lblTitulo);
 
-            Label lblReglas = Estilo.CrearEtiqueta(
-                "Triángulo: " + Estilo.Triangulo + "   ·   Muerte súbita: ronda " + Combate.TurnoMuerteSubita,
-                540, 2, 710, 32, 9f, false);
-            lblReglas.TextAlign = ContentAlignment.MiddleRight;
-            barra.Controls.Add(lblReglas);
+            Label lblTriangulo = Estilo.CrearEtiqueta("Triángulo: " + Estilo.Triangulo, 440, 2, 470, 32, 9f, false);
+            lblTriangulo.TextAlign = ContentAlignment.MiddleRight;
+            barra.Controls.Add(lblTriangulo);
+
+            btnReglas = new Button();
+            btnReglas.SetBounds(AnchoVentana - 14 - 90 - 8 - 84, 5, 84, 26);
+            Estilo.EstilizarBoton(btnReglas, "Reglas", Color.FromArgb(60, 70, 110));
+            btnReglas.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            btnReglas.Click += BtnReglas_Click;
+            barra.Controls.Add(btnReglas);
+
+            btnRendirse = new Button();
+            btnRendirse.SetBounds(AnchoVentana - 14 - 90, 5, 90, 26);
+            Estilo.EstilizarBoton(btnRendirse, "Rendirse", Color.FromArgb(130, 30, 40));
+            btnRendirse.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            btnRendirse.Click += BtnRendirse_Click;
+            barra.Controls.Add(btnRendirse);
         }
 
         /// <summary>Las dos cartas del campo, las dos bancas y la zona central con los botones.</summary>
         private void ConstruirCampoDeDuelo()
         {
             // Nombres de los equipos sobre sus cartas.
-            lblEquipoJugador = CrearTitulo(string.Empty, XCartaJugador, 232);
-            lblEquipoRival = CrearTitulo(string.Empty, XCartaRival, 232);
+            lblEquipoJugador = CrearTitulo(string.Empty, XCartaJugador, 200);
+            lblEquipoRival = CrearTitulo(string.Empty, XCartaRival, 200);
 
-            cartaJugador = new VistaCarta(false);
-            cartaJugador.Location = new Point(XCartaJugador, 70);
+            cartaJugador = new VistaCarta(TamanoCarta.Mediana);
+            cartaJugador.Location = new Point(XCartaJugador, YCampo);
             Controls.Add(cartaJugador);
 
-            cartaRival = new VistaCarta(false);
-            cartaRival.Location = new Point(XCartaRival, 70);
+            cartaRival = new VistaCarta(TamanoCarta.Mediana);
+            cartaRival.Location = new Point(XCartaRival, YCampo);
             Controls.Add(cartaRival);
 
             // Bancas: mi banca a la izquierda, la del rival a la derecha. Cada una es una mano de cartas en línea
@@ -295,117 +324,103 @@ namespace ArenaElemental.Formularios
             lblBancaRival = CrearTitulo(string.Empty, XBancaRival, AnchoBanca);
             CrearBanca(XBancaRival, bancaRival, FlowDirection.LeftToRight);
 
-            // Debajo de cada mano, una nota que explica la regla (útil para la defensa del proyecto).
-            CrearNota(XBancaJugador, "COLA DE RELEVOS (Queue)",
-                "Entra primero la carta con borde dorado, la más cercana a tu carta en el campo.\n\n" +
-                "Quien sale del campo se forma al final de la cola.\n\n" +
-                "No se puede relevar dos turnos seguidos. Si cae tu personaje, entra el siguiente gratis.");
-            CrearNota(XBancaRival, "EVENTOS DEL COMBATE",
-                "TERREMOTO: cada ronda hay " + Combate.ProbabilidadTerremoto + "% de probabilidad. Daño = Min(f'(t), " +
-                Combate.LimiteTerremotoPct + "% de la vida máxima), con f(t) = 2t² + 5t y f'(t) = 4t + 5 (t = ronda). " +
-                "Nunca baja de 1 HP.\n\n" +
-                "MUERTE SÚBITA: pasada la ronda " + Combate.TurnoMuerteSubita + ", el ataque de todos crece " +
-                (int)Math.Round(Combate.IncrementoMuerteSubita * 100) + "% en cada ronda.");
-
             // Zona central entre las dos cartas.
-            lblTurno = Estilo.CrearEtiqueta(string.Empty, XCentro, 70, AnchoCentro, 44, 14f, true);
+            lblTurno = Estilo.CrearEtiqueta(string.Empty, XCentro, YCampo, AnchoCentro, 40, 14f, true);
             lblTurno.BackColor = PanelOscuroTranslucido;
             lblTurno.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(lblTurno);
 
-            lblInstruccion = Estilo.CrearEtiqueta(string.Empty, XCentro, 118, AnchoCentro, 36, 9f, false);
+            lblInstruccion = Estilo.CrearEtiqueta(string.Empty, XCentro, YCampo + 44, AnchoCentro, 32, 9f, false);
             lblInstruccion.BackColor = PanelOscuroTranslucido;
             lblInstruccion.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(lblInstruccion);
 
-            btnAtacar = CrearBotonAccion(160, Color.Crimson);
+            btnAtacar = CrearBotonAccion(YCampo + 82, Color.Crimson);
             btnAtacar.Click += BtnAtacar_Click;
 
             menuAliados = new ContextMenuStrip();
-            btnHabAtaque = CrearBotonAccion(206, Color.FromArgb(88, 40, 140));
+            btnHabAtaque = CrearBotonAccion(YCampo + 126, Color.FromArgb(88, 40, 140));
             btnHabAtaque.Click += BtnHabAtaque_Click;
 
-            btnHabUtilidad = CrearBotonAccion(252, Color.FromArgb(16, 122, 104));
+            btnHabUtilidad = CrearBotonAccion(YCampo + 170, Color.FromArgb(16, 122, 104));
             btnHabUtilidad.Click += BtnHabUtilidad_Click;
 
-            btnRelevo = CrearBotonAccion(298, Color.FromArgb(24, 110, 160));
+            btnRelevo = CrearBotonAccion(YCampo + 214, Color.FromArgb(24, 110, 160));
             btnRelevo.Click += BtnRelevo_Click;
 
-            btnPasar = CrearBotonAccion(344, Color.FromArgb(70, 78, 100));
+            btnPasar = CrearBotonAccion(YCampo + 258, Color.FromArgb(70, 78, 100));
             btnPasar.Click += BtnPasar_Click;
 
-            lblTerremoto = Estilo.CrearEtiqueta(string.Empty, XCentro, 394, AnchoCentro, 28, 9f, true);
+            lblTerremoto = Estilo.CrearEtiqueta(string.Empty, XCentro, YCampo + 304, AnchoCentro, 24, 9f, true);
             lblTerremoto.BackColor = PanelOscuroTranslucido;
             lblTerremoto.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(lblTerremoto);
 
-            Label vs = Estilo.CrearEtiqueta("VS", XCentro, 430, AnchoCentro, 50, 28f, true);
+            Label vs = Estilo.CrearEtiqueta("VS", XCentro, YCampo + 336, AnchoCentro, 56, 28f, true);
             vs.ForeColor = Color.Gold;
             vs.TextAlign = ContentAlignment.MiddleCenter;
             Controls.Add(vs);
         }
 
-        /// <summary>Columna derecha: el historial (pila) con estilo de registro de combate.</summary>
+        /// <summary>
+        /// El historial (pila) con estilo de registro de combate. Es un panel pequeño y translúcido
+        /// debajo de la banca del jugador; el resto de esa zona queda libre para que se vea el escenario.
+        /// </summary>
         private void ConstruirPanelRegistro()
         {
             Panel panel = new Panel();
-            panel.SetBounds(XRegistro, 44, 212, 448);
-            panel.BackColor = PanelOscuro;
+            panel.SetBounds(XBancaJugador, 276, AnchoBanca, 262);
+            panel.BackColor = PanelBancaTranslucido;
             Controls.Add(panel);
             Estilo.Redondear(panel, 12);
 
-            Label titulo = Estilo.CrearEtiqueta("REGISTRO DE COMBATE (pila)", 10, 8, 194, 22, 9f, true);
+            Label titulo = Estilo.CrearEtiqueta("REGISTRO (pila)", 10, 6, AnchoBanca - 20, 20, 9f, true);
             titulo.ForeColor = Color.Gold;
             panel.Controls.Add(titulo);
 
             lstHistorial = new ListBox();
-            lstHistorial.SetBounds(8, 34, 196, 288);
+            lstHistorial.SetBounds(8, 30, AnchoBanca - 16, 156);
             lstHistorial.BackColor = Color.FromArgb(6, 6, 9);
             lstHistorial.ForeColor = Color.White;
             lstHistorial.BorderStyle = BorderStyle.None;
-            lstHistorial.Font = new Font("Consolas", 9f);
+            lstHistorial.Font = new Font("Consolas", 8.5f);
             lstHistorial.SelectionMode = SelectionMode.None;
             lstHistorial.DrawMode = DrawMode.OwnerDrawVariable;
             lstHistorial.MeasureItem += Historial_MeasureItem;
             lstHistorial.DrawItem += Historial_DrawItem;
             panel.Controls.Add(lstHistorial);
 
-            Label ultima = Estilo.CrearEtiqueta("Última jugada (Peek de la pila):", 10, 328, 194, 18, 8f, true);
+            Label ultima = Estilo.CrearEtiqueta("Última jugada (Peek):", 10, 192, AnchoBanca - 20, 18, 8f, true);
             ultima.ForeColor = Color.Gold;
             panel.Controls.Add(ultima);
 
-            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 10, 346, 194, 48, 8.5f, false);
+            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 10, 210, AnchoBanca - 20, 48, 8f, false);
             lblUltimaJugada.ForeColor = Color.White;
             panel.Controls.Add(lblUltimaJugada);
-
-            btnRendirse = new Button();
-            btnRendirse.SetBounds(10, 398, 194, 38);
-            Estilo.EstilizarBoton(btnRendirse, "Rendirse", Color.FromArgb(130, 30, 40));
-            btnRendirse.Click += BtnRendirse_Click;
-            panel.Controls.Add(btnRendirse);
         }
 
         private Label CrearTitulo(string texto, int x, int ancho)
         {
-            Label l = Estilo.CrearEtiqueta(texto, x, 44, ancho, 22, 10.5f, true);
+            Label l = Estilo.CrearEtiqueta(texto, x, YTitulos, ancho, 22, 10f, true);
             l.ForeColor = Color.Gold;
             l.BackColor = PanelOscuroTranslucido;
+            l.TextAlign = ContentAlignment.MiddleLeft;
             Controls.Add(l);
             return l;
         }
 
         /// <summary>
-        /// Crea la "mano" de la banca: un FlowLayoutPanel casi negro con las cartas pequeñas en una sola fila.
+        /// Crea la "mano" de la banca: un FlowLayoutPanel translúcido con las cartas pequeñas en una sola fila.
         /// El orden de las cartas es el de la cola; la dirección del flujo decide de qué lado empieza la fila.
         /// </summary>
         private void CrearBanca(int x, VistaCarta[] cartas, FlowDirection direccion)
         {
             FlowLayoutPanel flujo = new FlowLayoutPanel();
-            flujo.SetBounds(x, 68, AnchoBanca, 190);
+            flujo.SetBounds(x, YCampo, AnchoBanca, 190);
             flujo.FlowDirection = direccion;
             flujo.WrapContents = false;
             flujo.AutoScroll = false;
-            flujo.BackColor = PanelOscuro;
+            flujo.BackColor = PanelBancaTranslucido;
             flujo.ForeColor = Color.White;
             flujo.Padding = new Padding(3, 3, 3, 3);
             Controls.Add(flujo);
@@ -419,32 +434,33 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Panel oscuro con un título dorado y un texto explicativo, debajo de la mano de cartas.</summary>
-        private void CrearNota(int x, string titulo, string texto)
-        {
-            Panel nota = new Panel();
-            nota.SetBounds(x, 266, AnchoBanca, 226);
-            nota.BackColor = PanelOscuro;
-            Controls.Add(nota);
-            Estilo.Redondear(nota, 12);
-
-            Label lblNotaTitulo = Estilo.CrearEtiqueta(titulo, 10, 8, AnchoBanca - 20, 20, 9f, true);
-            lblNotaTitulo.ForeColor = Color.Gold;
-            nota.Controls.Add(lblNotaTitulo);
-
-            Label lblNotaTexto = Estilo.CrearEtiqueta(texto, 10, 32, AnchoBanca - 20, 188, 8f, false);
-            lblNotaTexto.ForeColor = Estilo.TextoSuave;
-            nota.Controls.Add(lblNotaTexto);
-        }
-
         private Button CrearBotonAccion(int y, Color color)
         {
             Button b = new Button();
-            b.SetBounds(XCentro + 4, y, AnchoCentro - 8, 40);
+            b.SetBounds(XCentro, y, AnchoCentro, 40);
             Estilo.EstilizarBoton(b, string.Empty, color);
-            b.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            b.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             Controls.Add(b);
             return b;
+        }
+
+        /// <summary>El resumen de las reglas que antes ocupaba dos paneles fijos: ahora aparece solo cuando se pide.</summary>
+        private void BtnReglas_Click(object sender, EventArgs e)
+        {
+            string texto =
+                "COLA DE RELEVOS (Queue)\n" +
+                "Entra primero la carta con borde dorado, la más cercana a tu carta en el campo. " +
+                "Quien sale del campo se forma al final de la cola. " +
+                "No se puede relevar dos turnos seguidos. Si cae tu personaje, entra el siguiente gratis.\n\n" +
+                "TERREMOTO\n" +
+                "Cada ronda hay " + Combate.ProbabilidadTerremoto + "% de probabilidad. Daño = Min(f'(t), " +
+                Combate.LimiteTerremotoPct + "% de la vida máxima), con f(t) = 2t² + 5t y f'(t) = 4t + 5 (t = ronda). " +
+                "Nunca baja de 1 HP.\n\n" +
+                "MUERTE SÚBITA\n" +
+                "Pasada la ronda " + Combate.TurnoMuerteSubita + ", el ataque de todos crece " +
+                (int)Math.Round(Combate.IncrementoMuerteSubita * 100) + "% en cada ronda.\n\n" +
+                "TRIÁNGULO ELEMENTAL\n" + Estilo.Triangulo + " (ventaja x1.5, desventaja x0.5).";
+            MessageBox.Show(texto, "Reglas del combate", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ---------- Eventos de los botones ----------
@@ -557,6 +573,11 @@ namespace ArenaElemental.Formularios
 
             MostrarCambioDeVida(cartaJugador, localAntes, hpLocalAntes, local.Activo, DanoTerremotoLocal);
             MostrarCambioDeVida(cartaRival, remotoAntes, hpRemotoAntes, remoto.Activo, DanoTerremotoRemoto);
+
+            // Si fue un ataque, se avisa cuando el golpe fue muy efectivo o poco efectivo.
+            if (esMia) MostrarEficacia(accion, localAntes, remotoAntes, CambioDeVida(remotoAntes, hpRemotoAntes, remoto.Activo, DanoTerremotoRemoto), cartaRival);
+            else MostrarEficacia(accion, remotoAntes, localAntes, CambioDeVida(localAntes, hpLocalAntes, local.Activo, DanoTerremotoLocal), cartaJugador);
+
             Refrescar();
         }
 
@@ -696,6 +717,7 @@ namespace ArenaElemental.Formularios
             timerEvento.Stop();
             timerRed.Stop();
             CerrarAviso();
+            efectos.Detener();
             base.OnFormClosing(e);
         }
 
@@ -709,7 +731,9 @@ namespace ArenaElemental.Formularios
                 if (timerEvento != null) { timerEvento.Stop(); timerEvento.Dispose(); }
                 if (timerRed != null) { timerRed.Stop(); timerRed.Dispose(); }
                 if (BackgroundImage != null) BackgroundImage.Dispose();
+                if (efectos != null) efectos.Dispose();
                 fuenteFlotante.Dispose();
+                fuenteAviso.Dispose();
                 ayuda.Dispose();
             }
             base.Dispose(disposing);
@@ -881,6 +905,20 @@ namespace ArenaElemental.Formularios
             {
                 Sonidos.Terremoto();
                 IniciarTemblor();
+
+                // Lluvia de escombros por todo el tablero y las dos cartas del campo se sacuden.
+                efectos.Escombros(AnchoVentana, 70);
+                cartaJugador.Sacudir();
+                cartaRival.Sacudir();
+                cartaJugador.Destellar(Color.Orange);
+                cartaRival.Destellar(Color.Orange);
+            }
+            else
+            {
+                // Muerte súbita: estallido rojo en el centro y las cartas se tiñen de rojo.
+                efectos.Estallido(new Point(XCentro + AnchoCentro / 2, YCampo + 150), Color.Crimson, 60);
+                cartaJugador.Destellar(Color.Crimson);
+                cartaRival.Destellar(Color.Crimson);
             }
             MostrarAviso(avisoTitulo, avisoDetalle);
             avisoTitulo = null;
@@ -894,7 +932,7 @@ namespace ArenaElemental.Formularios
             CerrarAviso();
             aviso = new AvisoEvento(titulo, detalle);
             int centroX = XCentro + AnchoCentro / 2;
-            aviso.Location = PointToScreen(new Point(centroX - aviso.Width / 2, 190));
+            aviso.Location = PointToScreen(new Point(centroX - aviso.Width / 2, YCampo + 110));
             aviso.Show(this);
         }
 
@@ -912,31 +950,96 @@ namespace ArenaElemental.Formularios
         /// </summary>
         private void MostrarCambioDeVida(VistaCarta carta, Personaje antes, int hpAntes, Personaje ahora, int danoTerremoto)
         {
-            int cambio = antes.Hp - hpAntes;
-            // Si sigue siendo el mismo personaje, su HP ya incluye el golpe del Terremoto: se separa para mostrarlo aparte.
-            if (antes == ahora) cambio += danoTerremoto;
+            int cambio = CambioDeVida(antes, hpAntes, ahora, danoTerremoto);
+            Point centro = new Point(carta.Left + carta.Width / 2, carta.Top + 110);
 
             if (cambio < 0)
-                CrearTextoFlotante(carta, "-" + (-cambio), Color.FromArgb(255, 110, 80), Color.FromArgb(34, 10, 10), 0);
+            {
+                int dano = -cambio;
+                CrearTextoFlotante(carta, "-" + dano, Color.FromArgb(255, 110, 80), Color.FromArgb(34, 10, 10), 0);
+
+                // Golpe: la carta se tiñe de rojo, vibra y suelta chispas (más si el golpe fue grande).
+                carta.Destellar(Color.Red);
+                carta.Sacudir();
+                efectos.Chispas(centro, Color.FromArgb(255, 150, 60), 10 + Math.Min(20, dano / 2));
+
+                if (dano * 100 >= antes.HpMax * GolpeFuertePct)
+                    IniciarTemblor(5, 6);   // un golpe muy fuerte también mueve un poco la ventana
+            }
             else if (cambio > 0)
+            {
                 CrearTextoFlotante(carta, "+" + cambio, Color.FromArgb(130, 255, 150), Color.FromArgb(10, 36, 18), 0);
+                carta.Destellar(Color.LimeGreen);
+                efectos.Brillos(centro, Color.FromArgb(110, 255, 140), 16);
+            }
+
+            if (antes != ahora)
+            {
+                if (!antes.EstaVivo)
+                {
+                    // Cayó el personaje: estalla en partículas del color de su elemento.
+                    efectos.Estallido(centro, Estilo.ColorDe(antes.Elemento), 50);
+                    CrearTextoFlotante(carta, "¡DERROTADO!", Color.FromArgb(255, 90, 90), Color.FromArgb(34, 10, 10), 6, fuenteAviso, 150, 70);
+                }
+                else
+                {
+                    // Relevo: un destello celeste y brillos de entrada.
+                    carta.Destellar(Color.DeepSkyBlue);
+                    efectos.Brillos(centro, Color.FromArgb(120, 200, 255), 18);
+                }
+            }
 
             if (danoTerremoto > 0)
                 CrearTextoFlotante(carta, "-" + danoTerremoto, Color.FromArgb(255, 170, 40), Color.FromArgb(38, 24, 6), EsperaTerremoto);
         }
 
+        /// <summary>
+        /// Cuánta vida cambió (negativo = daño, positivo = curación) sin contar el Terremoto, que se muestra aparte.
+        /// Si sigue siendo el mismo personaje, su HP ya incluye el golpe del Terremoto: se separa.
+        /// </summary>
+        private int CambioDeVida(Personaje antes, int hpAntes, Personaje ahora, int danoTerremoto)
+        {
+            int cambio = antes.Hp - hpAntes;
+            if (antes == ahora) cambio += danoTerremoto;
+            return cambio;
+        }
+
+        /// <summary>Si la jugada fue un ataque que hizo daño, muestra "¡SUPEREFICAZ!" o "POCO EFICAZ" sobre el que lo recibió.</summary>
+        private void MostrarEficacia(AccionCombate accion, Personaje atacante, Personaje defensor, int cambioDelDefensor, VistaCarta cartaDefensor)
+        {
+            if (cambioDelDefensor >= 0) return;
+
+            bool esAtaque = (accion.Tipo == TipoAccion.Atacar);
+            if (accion.Tipo == TipoAccion.Habilidad) esAtaque = atacante.ObtenerHabilidad(accion.NumeroHabilidad).EsOfensiva;
+            if (!esAtaque) return;
+
+            double multiplicador = atacante.ObtenerMultiplicador(defensor.Elemento);
+            if (multiplicador > Personaje.MultiplicadorNeutro)
+                CrearTextoFlotante(cartaDefensor, "¡SUPEREFICAZ!", Color.Gold, Color.FromArgb(40, 30, 6), 4, fuenteAviso, 150, 70);
+            else if (multiplicador < Personaje.MultiplicadorNeutro)
+                CrearTextoFlotante(cartaDefensor, "poco eficaz", Color.FromArgb(170, 190, 220), Color.FromArgb(16, 20, 32), 4, fuenteAviso, 150, 70);
+        }
+
         private void CrearTextoFlotante(VistaCarta carta, string texto, Color colorTexto, Color colorFondo, int espera)
         {
+            CrearTextoFlotante(carta, texto, colorTexto, colorFondo, espera, fuenteFlotante, 88, 130);
+        }
+
+        /// <summary>Crea una etiqueta que sube sobre la carta: "y" es la altura (desde la parte de arriba de la carta) donde empieza.</summary>
+        private void CrearTextoFlotante(VistaCarta carta, string texto, Color colorTexto, Color colorFondo, int espera, Font fuente, int ancho, int y)
+        {
+            int alto = (fuente == fuenteFlotante) ? 40 : 28;
+
             Label etiqueta = new Label();
             etiqueta.Text = texto;
-            etiqueta.Font = fuenteFlotante;
+            etiqueta.Font = fuente;
             etiqueta.ForeColor = colorTexto;
             etiqueta.BackColor = colorFondo;   // fondo sólido: un Label transparente dejaría ver el fondo del formulario y no la carta
             etiqueta.TextAlign = ContentAlignment.MiddleCenter;
-            etiqueta.SetBounds(carta.Left + (carta.Width - 88) / 2, carta.Top + 150, 88, 40);
+            etiqueta.SetBounds(carta.Left + (carta.Width - ancho) / 2, carta.Top + y, ancho, alto);
             etiqueta.Visible = false;
             Controls.Add(etiqueta);
-            Estilo.Redondear(etiqueta, 18);
+            Estilo.Redondear(etiqueta, alto / 2);
 
             TextoFlotante flotante = new TextoFlotante();
             flotante.Etiqueta = etiqueta;
@@ -982,10 +1085,19 @@ namespace ArenaElemental.Formularios
 
         // ---------- Efecto de temblor ----------
 
+        /// <summary>Terremoto: temblor fuerte y largo.</summary>
         private void IniciarTemblor()
+        {
+            IniciarTemblor(8, 12);
+        }
+
+        /// <summary>La ventana se mueve de lado a lado "amplitud" píxeles durante "pasos" cambios de 40 ms.</summary>
+        private void IniciarTemblor(int amplitud, int pasos)
         {
             if (timerTemblor.Enabled) return;
             posicionOriginal = Location;
+            amplitudTemblor = amplitud;
+            pasosTotalesTemblor = pasos;
             pasosTemblor = 0;
             timerTemblor.Start();
         }
@@ -993,14 +1105,14 @@ namespace ArenaElemental.Formularios
         private void TimerTemblor_Tick(object sender, EventArgs e)
         {
             pasosTemblor++;
-            if (pasosTemblor > 12)
+            if (pasosTemblor > pasosTotalesTemblor)
             {
                 timerTemblor.Stop();
                 Location = posicionOriginal;
                 return;
             }
-            int desplazamiento = -8;
-            if (pasosTemblor % 2 == 0) desplazamiento = 8;
+            int desplazamiento = -amplitudTemblor;
+            if (pasosTemblor % 2 == 0) desplazamiento = amplitudTemblor;
             Location = new Point(posicionOriginal.X + desplazamiento, posicionOriginal.Y);
         }
 

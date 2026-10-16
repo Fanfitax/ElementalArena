@@ -236,6 +236,52 @@ namespace ArenaElemental.Formularios
             }
         }
 
+        /// <summary>Da a una tabla el aspecto oscuro del juego (la usan las estadísticas y el ranking).</summary>
+        public static void EstilizarTabla(DataGridView dgv)
+        {
+            dgv.AutoGenerateColumns = false;
+            dgv.ReadOnly = true;
+            dgv.AllowUserToAddRows = false;
+            dgv.AllowUserToDeleteRows = false;
+            dgv.AllowUserToResizeRows = false;
+            dgv.RowHeadersVisible = false;
+            dgv.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgv.MultiSelect = false;
+            dgv.BorderStyle = BorderStyle.None;
+            dgv.BackgroundColor = Color.FromArgb(10, 12, 18);
+            dgv.GridColor = Color.FromArgb(36, 42, 60);
+            dgv.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            dgv.EnableHeadersVisualStyles = false;
+            dgv.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+            dgv.ColumnHeadersHeight = 36;
+            dgv.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            dgv.RowTemplate.Height = 30;
+            dgv.Font = new Font("Segoe UI", 10f);
+            dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(24, 30, 46);
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.Gold;
+            dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            dgv.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.FromArgb(24, 30, 46);
+            dgv.DefaultCellStyle.BackColor = Color.FromArgb(10, 12, 18);
+            dgv.DefaultCellStyle.ForeColor = Color.White;
+            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(40, 56, 96);
+            dgv.DefaultCellStyle.SelectionForeColor = Color.White;
+            dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(16, 20, 30);
+        }
+
+        /// <summary>Agrega una columna de texto a la tabla. "peso" es su ancho relativo y "formato" es opcional (fechas, números).</summary>
+        public static void AgregarColumna(DataGridView dgv, string propiedad, string titulo, int peso, string formato)
+        {
+            DataGridViewTextBoxColumn col = new DataGridViewTextBoxColumn();
+            col.Name = propiedad;
+            col.DataPropertyName = propiedad;
+            col.HeaderText = titulo;
+            col.FillWeight = peso;
+            if (formato != null) col.DefaultCellStyle.Format = formato;
+            dgv.Columns.Add(col);
+        }
+
         /// <summary>Una línea con el nombre, el costo y lo que hace una habilidad.</summary>
         public static string DescripcionHabilidad(Habilidad h)
         {

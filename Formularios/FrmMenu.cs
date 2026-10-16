@@ -96,13 +96,20 @@ namespace ArenaElemental.Formularios
             btnCodice.Click += BtnCodice_Click;
             Controls.Add(btnCodice);
 
+            Button btnRanking = new Button();
+            btnRanking.SetBounds(54, 544, 166, 36);
+            Estilo.EstilizarBoton(btnRanking, "RANKING", Color.FromArgb(176, 132, 28));
+            btnRanking.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+            btnRanking.Click += BtnRanking_Click;
+            Controls.Add(btnRanking);
+
             Button btnSalir = new Button();
-            btnSalir.SetBounds(54, 544, 340, 36);
+            btnSalir.SetBounds(228, 544, 166, 36);
             Estilo.EstilizarBoton(btnSalir, "SALIR", Estilo.PanelClaro);
             btnSalir.Click += BtnSalir_Click;
             Controls.Add(btnSalir);
 
-            Label nota = Estilo.CrearEtiqueta("Las estadísticas se guardan solo mientras el programa esté abierto.", 54, 594, 400, 20, 8.5f, false);
+            Label nota = Estilo.CrearEtiqueta("Las partidas se guardan en partidas.txt, junto al programa.", 54, 594, 400, 20, 8.5f, false);
             nota.ForeColor = Estilo.TextoSuave;
             Controls.Add(nota);
             AcceptButton = btnJugar;
@@ -199,6 +206,14 @@ namespace ArenaElemental.Formularios
         private void BtnStats_Click(object sender, EventArgs e)
         {
             VerEstadisticas();
+        }
+
+        private void BtnRanking_Click(object sender, EventArgs e)
+        {
+            using (FrmRanking frm = new FrmRanking(txtJugador.Text.Trim()))
+            {
+                frm.ShowDialog(this);
+            }
         }
 
         private void BtnCodice_Click(object sender, EventArgs e)

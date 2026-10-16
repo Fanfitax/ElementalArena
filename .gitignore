@@ -19,3 +19,6 @@ obj/
 # Varios
 Thumbs.db
 *.log
+
+# Partidas guardadas por el juego (historial y ranking)
+partidas.txt

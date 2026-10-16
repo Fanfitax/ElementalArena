@@ -6,6 +6,14 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
 {
+    /// <summary>Los tres tamaños de carta: pequeña (banca), mediana (campo del combate) y grande (vista previa).</summary>
+    public enum TamanoCarta
+    {
+        Pequena,
+        Mediana,
+        Grande
+    }
+
     /// <summary>
     /// Representa un personaje como una carta física de un juego de cartas (TCG).
     /// Todo se arma por código con controles nativos: Panel (cabecera), PictureBox (ilustración),
@@ -16,7 +24,12 @@ namespace ArenaElemental.Formularios
     /// </summary>
     public class VistaCarta : UserControl
     {
+        // Pasos (de 30 ms) que duran los efectos de golpe.
+        private const int PasosDestello = 12;
+        private const int PasosSacudida = 10;
+
         private bool pequena;
+        private bool mediana;
         private bool resaltada;
         private bool esSiguiente;
         private Elemento elemento = Elemento.Fuego;
@@ -28,21 +41,49 @@ namespace ArenaElemental.Formularios
         private Label lblHp, lblEng, lblStats, lblHabAtaque, lblHabUtilidad, lblEstado;
         private ProgressBar barHp, barEng;
 
-        public VistaCarta() : this(false)
+        // Efectos de golpe (los maneja la propia carta con su reloj): destello de color y sacudida.
+        private Timer timerEfecto;
+        private Color colorDestello = Color.White;
+        private int pasoDestello;
+        private int pasoSacudida;
+        private int xBaseSacudida;
+
+        public VistaCarta() : this(TamanoCarta.Grande)
         {
         }
 
-        public VistaCarta(bool pequena)
+        public VistaCarta(bool pequena) : this(pequena ? TamanoCarta.Pequena : TamanoCarta.Grande)
         {
-            this.pequena = pequena;
+        }
+
+        public VistaCarta(TamanoCarta tamano)
+        {
+            pequena = (tamano == TamanoCarta.Pequena);
+            mediana = (tamano == TamanoCarta.Mediana);
             DoubleBuffered = true;
-            Size = pequena ? new Size(92, 178) : new Size(232, 420);
             BackColor = Estilo.Panel;
 
-            if (pequena) ConstruirPequena();
-            else ConstruirGrande();
+            if (pequena)
+            {
+                Size = new Size(92, 178);
+                ConstruirPequena();
+            }
+            else if (mediana)
+            {
+                Size = new Size(200, 316);
+                ConstruirMediana();
+            }
+            else
+            {
+                Size = new Size(232, 420);
+                ConstruirGrande();
+            }
 
             Estilo.Redondear(this, pequena ? 10 : 14);
+
+            timerEfecto = new Timer();
+            timerEfecto.Interval = 30;
+            timerEfecto.Tick += TimerEfecto_Tick;
         }
 
         /// <summary>True para marcar la carta que entraría en el próximo relevo (se dibuja con borde dorado).</summary>
@@ -80,6 +121,29 @@ namespace ArenaElemental.Formularios
             lblHabAtaque = CrearTexto(this, 8, 344, 216, 18, 8.5f, false);
             lblHabUtilidad = CrearTexto(this, 8, 362, 216, 18, 8.5f, false);
             lblEstado = CrearTexto(this, 8, 388, 216, 22, 9.5f, true);
+            lblEstado.TextAlign = ContentAlignment.MiddleCenter;
+        }
+
+        /// <summary>La carta del combate: como la grande pero sin las líneas de habilidades (están en los botones).</summary>
+        private void ConstruirMediana()
+        {
+            panelCabecera = new Panel();
+            panelCabecera.SetBounds(6, 6, 188, 32);
+            lblNombre = CrearTexto(panelCabecera, 8, 3, 112, 26, 13f, true);
+            lblElemento = CrearTexto(panelCabecera, 112, 3, 68, 26, 8f, true);
+            lblElemento.TextAlign = ContentAlignment.MiddleRight;
+            panelCabecera.Paint += Hijo_PintarFoil;
+            Controls.Add(panelCabecera);
+
+            pbImagen = CrearImagen(6, 42, 188, 148);
+
+            lblHp = CrearTexto(this, 8, 194, 184, 18, 9f, true);
+            barHp = CrearBarra(8, 212, 184, 12);
+            lblEng = CrearTexto(this, 8, 228, 184, 18, 9f, true);
+            barEng = CrearBarra(8, 246, 184, 10);
+
+            lblStats = CrearTexto(this, 8, 262, 184, 20, 10f, true);
+            lblEstado = CrearTexto(this, 8, 286, 184, 22, 9f, true);
             lblEstado.TextAlign = ContentAlignment.MiddleCenter;
         }
 
@@ -251,6 +315,72 @@ namespace ArenaElemental.Formularios
 
             // El brillo holográfico va al final para quedar por encima del fondo y del borde.
             DibujarFoil(e.Graphics);
+            DibujarDestello(e.Graphics, Width, Height);
+        }
+
+        // ---------- Efectos de golpe: destello de color y sacudida ----------
+
+        /// <summary>La carta se tiñe un instante de este color y se apaga poco a poco (rojo = daño, verde = curación...).</summary>
+        public void Destellar(Color color)
+        {
+            colorDestello = color;
+            pasoDestello = PasosDestello;
+            timerEfecto.Start();
+        }
+
+        /// <summary>La carta vibra de lado a lado como si recibiera un golpe.</summary>
+        public void Sacudir()
+        {
+            if (pasoSacudida == 0) xBaseSacudida = Left;
+            pasoSacudida = PasosSacudida;
+            timerEfecto.Start();
+        }
+
+        private void TimerEfecto_Tick(object sender, EventArgs e)
+        {
+            if (pasoDestello > 0)
+            {
+                pasoDestello--;
+                Invalidate();
+                pbImagen.Invalidate();
+                panelCabecera.Invalidate();
+            }
+
+            if (pasoSacudida > 0)
+            {
+                pasoSacudida--;
+                int desplazamiento = 0;
+                if (pasoSacudida > 0)
+                {
+                    desplazamiento = 7 * pasoSacudida / PasosSacudida + 2;
+                    if (pasoSacudida % 2 == 0) desplazamiento = -desplazamiento;
+                }
+                Left = xBaseSacudida + desplazamiento;
+            }
+
+            if (pasoDestello == 0 && pasoSacudida == 0) timerEfecto.Stop();
+        }
+
+        /// <summary>Capa de color translúcida que se desvanece; la usan la carta y sus hijos (imagen y cabecera).</summary>
+        private void DibujarDestello(Graphics g, int ancho, int alto)
+        {
+            if (pasoDestello <= 0) return;
+            int opacidad = 120 * pasoDestello / PasosDestello;
+            using (SolidBrush capa = new SolidBrush(Color.FromArgb(opacidad, colorDestello)))
+            {
+                g.FillRectangle(capa, 0, 0, ancho, alto);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && timerEfecto != null)
+            {
+                timerEfecto.Stop();
+                timerEfecto.Dispose();
+                timerEfecto = null;
+            }
+            base.Dispose(disposing);
         }
 
         // ---------- Efecto "foil" (carta holográfica) ----------
@@ -294,6 +424,7 @@ namespace ArenaElemental.Formularios
             e.Graphics.TranslateTransform(-hijo.Left, -hijo.Top);
             DibujarFoil(e.Graphics);
             e.Graphics.ResetTransform();
+            DibujarDestello(e.Graphics, hijo.Width, hijo.Height);
         }
     }
 }

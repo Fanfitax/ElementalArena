@@ -187,6 +187,29 @@ namespace ArenaElemental.Modelos
             return dano;
         }
 
+        /// <summary>
+        /// Cuánto daño haría un ataque básico contra el objetivo, SIN aplicarlo.
+        /// Lo usa la CPU para decidir su jugada.
+        /// </summary>
+        public int DanoEstimadoBasico(Personaje objetivo)
+        {
+            return CalcularDano(objetivo, 1.0, 0.0);
+        }
+
+        /// <summary>
+        /// Cuánto daño haría en total la habilidad de ataque contra el objetivo, SIN aplicarla
+        /// (el doble golpe cuenta los dos golpes). Lo usa la CPU para decidir su jugada.
+        /// </summary>
+        public int DanoEstimadoHabilidad(Personaje objetivo)
+        {
+            Habilidad h = habilidadAtaque;
+            if (h.Efecto == EfectoHabilidad.GolpePotenciado)
+                return CalcularDano(objetivo, h.Potencia, h.Extra);
+            if (h.Efecto == EfectoHabilidad.DobleGolpe)
+                return 2 * CalcularDano(objetivo, h.Potencia, 0.0);
+            return CalcularDano(objetivo, h.Potencia, 0.0);
+        }
+
         /// <summary>Le quita vida al personaje (nunca baja de 0) y devuelve el daño que realmente recibió.</summary>
         public int RecibirDano(int dano)
         {

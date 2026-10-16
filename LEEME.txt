@@ -6,7 +6,7 @@ ARENA ELEMENTAL - Guía rápida
    Destino: .NET Framework 4.0, C# 4.0 (sin características de C# 5/6).
    Referencias necesarias (ya incluidas): System, System.Core,
    System.Drawing, System.Windows.Forms.
-   El juego NO usa base de datos: todo vive en memoria.
+   El juego NO usa base de datos. Las partidas jugadas se guardan en partidas.txt (junto al .exe) para el historial y el ranking.
 
 2) ESTRUCTURA
    Modelos\      Personaje (abstracta), CartaFuego/Agua/Tierra/Aire, Habilidad, Escenario
@@ -14,11 +14,11 @@ ARENA ELEMENTAL - Guía rápida
                  AccionCombate, IaRival (CPU)
    Datos\        CatalogoBase (listas estáticas con los 12 personajes y 4 escenarios),
                  LorePersonajes (historia, reflexion filosofica y dilema de cada personaje),
-                 RegistroPartidas (estadísticas en memoria), EstadisticaPartida
-   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas, FrmCodice (Codice Elemental: lore y antropologia filosofica),
+                 RegistroPartidas (historial y ranking, guardados en partidas.txt), EstadisticaPartida (+ PuestoRanking)
+   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas, FrmRanking, FrmCodice (Codice Elemental: lore y antropologia filosofica),
                  VistaCarta (carta visual), MiniaturaPersonaje (ficha de la galeria),
                  FormularioModerno (fondo comun), Ilustraciones (prepara las imagenes), Estilo,
-                 Sonidos (efectos .wav con SoundPlayer), AvisoEvento (banner del Terremoto)
+                 Sonidos (efectos .wav con SoundPlayer), AvisoEvento (banner del Terremoto), EfectosCombate (particulas)
    Imagenes\     Una ilustracion por personaje (pyra.jpg, golem.jpg...) y un fondo por escenario (volcan.jpg, lago.jpg, canon.jpg, cumbre.jpg). Se reemplazan
                  por las tuyas con el mismo nombre; si falta alguna el juego usa colores lisos.
                  Ver Imagenes\LEEME.txt.
