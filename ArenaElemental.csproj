@@ -39,7 +39,6 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
@@ -48,28 +47,38 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Modelos\Elemento.cs" />
     <Compile Include="Modelos\Personaje.cs" />
+    <Compile Include="Modelos\Habilidad.cs" />
     <Compile Include="Modelos\CartaFuego.cs" />
     <Compile Include="Modelos\CartaAgua.cs" />
     <Compile Include="Modelos\CartaTierra.cs" />
     <Compile Include="Modelos\CartaAire.cs" />
     <Compile Include="Modelos\Escenario.cs" />
-    <Compile Include="Modelos\FabricaPersonajes.cs" />
     <Compile Include="Motor\AccionCombate.cs" />
     <Compile Include="Motor\EquipoCombate.cs" />
     <Compile Include="Motor\Combate.cs" />
     <Compile Include="Motor\IaRival.cs" />
-    <Compile Include="Datos\ConfiguracionBD.cs" />
+    <Compile Include="Motor\RedLan.cs" />
+    <Compile Include="Motor\ConfigPartida.cs" />
     <Compile Include="Datos\CatalogoBase.cs" />
     <Compile Include="Datos\EstadisticaPartida.cs" />
-    <Compile Include="Datos\IRepositorio.cs" />
-    <Compile Include="Datos\RepositorioMemoria.cs" />
-    <Compile Include="Datos\RepositorioSql.cs" />
+    <Compile Include="Datos\RegistroPartidas.cs" />
+    <Compile Include="Datos\LorePersonajes.cs" />
     <Compile Include="Formularios\Estilo.cs" />
-    <Compile Include="Formularios\TarjetaPersonaje.cs" />
+    <Compile Include="Formularios\VistaCarta.cs" />
+    <Compile Include="Formularios\Ilustraciones.cs" />
+    <Compile Include="Formularios\MiniaturaPersonaje.cs" />
+    <Compile Include="Formularios\FormularioModerno.cs" />
+    <Compile Include="Formularios\Sonidos.cs" />
+    <Compile Include="Formularios\AvisoEvento.cs" />
+    <Compile Include="Formularios\EfectosCombate.cs" />
     <Compile Include="Formularios\FrmMenu.cs" />
     <Compile Include="Formularios\FrmSeleccionEquipo.cs" />
     <Compile Include="Formularios\FrmCombate.cs" />
     <Compile Include="Formularios\FrmEstadisticas.cs" />
+    <Compile Include="Formularios\FrmRanking.cs" />
+    <Compile Include="Formularios\FrmCodice.cs" />
+    <Compile Include="Formularios\FrmLan.cs" />
+    <Compile Include="Formularios\FrmEsperaLan.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.Targets" />
 </Project>

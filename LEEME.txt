@@ -4,29 +4,55 @@ ARENA ELEMENTAL - Guía rápida
 1) ABRIR EL PROYECTO
    Abre ArenaElemental.sln con SharpDevelop 4.4 y presiona F5 (Ejecutar).
    Destino: .NET Framework 4.0, C# 4.0 (sin características de C# 5/6).
-   Referencias necesarias (ya incluidas): System, System.Core, System.Data,
+   Referencias necesarias (ya incluidas): System, System.Core,
    System.Drawing, System.Windows.Forms.
+   El juego NO usa base de datos. Las partidas jugadas se guardan en partidas.txt (junto al .exe) para el historial y el ranking.
 
-2) BASE DE DATOS (opcional: sin ella el juego corre en "modo sin conexión")
-   SQL Server : ejecutar BaseDatos\ArenaElemental_SQLServer.sql en SSMS.
-   MySQL      : ejecutar BaseDatos\ArenaElemental_MySQL.sql en Workbench.
-   Luego editar Datos\ConfiguracionBD.cs (proveedor y cadena de conexión).
-   Para MySQL se necesita MySQL Connector/NET y agregar la referencia MySql.Data.
+2) ESTRUCTURA
+   Modelos\      Personaje (abstracta), CartaFuego/Agua/Tierra/Aire, Habilidad, Escenario
+   Motor\        Combate (turnos, relevos y PILA del historial), EquipoCombate (COLA de relevos),
+                 AccionCombate, IaRival (CPU)
+   Datos\        CatalogoBase (listas estáticas con los 12 personajes y 4 escenarios),
+                 LorePersonajes (historia, reflexion filosofica y dilema de cada personaje),
+                 RegistroPartidas (historial y ranking, guardados en partidas.txt), EstadisticaPartida (+ PuestoRanking)
+   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate (mesa de duelo), FrmEstadisticas, FrmRanking, FrmCodice (Codice Elemental: lore y antropologia filosofica),
+                 VistaCarta (carta visual), MiniaturaPersonaje (ficha de la galeria),
+                 FormularioModerno (fondo comun), Ilustraciones (prepara las imagenes), Estilo,
+                 Sonidos (efectos .wav con SoundPlayer), AvisoEvento (banner del Terremoto), EfectosCombate (particulas)
+   Imagenes\     Una ilustracion por personaje (pyra.jpg, golem.jpg...) y un fondo por escenario (volcan.jpg, lago.jpg, canon.jpg, cumbre.jpg). Se reemplazan
+                 por las tuyas con el mismo nombre; si falta alguna el juego usa colores lisos.
+                 Ver Imagenes\LEEME.txt.
+   Sonidos\      ataque.wav, habilidad.wav, relevo.wav y terremoto.wav. Si falta alguno, el juego sigue sin ese sonido.
+   Herramientas\ Codigo que dibujo el tablero y genero los sonidos (no se compila con el proyecto)
+   GUIA_DEFENSA.md  Guia para estudiar y defender el proyecto (explicacion del codigo y preguntas probables)
+   BaseDatos\    Scripts SQL guardados para más adelante (no se usan por ahora)
 
-3) ESTRUCTURA
-   Modelos\      Personaje (abstracta), CartaFuego/Agua/Tierra/Aire, Escenario, FabricaPersonajes
-   Motor\        Combate (turnos y relevos), EquipoCombate, AccionCombate, IaRival (CPU)
-   Datos\        IRepositorio, RepositorioSql (ADO.NET), RepositorioMemoria, CatalogoBase
-   Formularios\  FrmMenu, FrmSeleccionEquipo, FrmCombate, FrmEstadisticas, TarjetaPersonaje, Estilo
-   BaseDatos\    Scripts SQL (SQL Server y MySQL)
+3) ESTRUCTURAS DE DATOS (de la guía)
+   - Queue<Personaje> (cola): la banca de relevos de cada equipo, en EquipoCombate.
+     Relevo = Dequeue del primero de la cola; el que sale se forma al final (Enqueue).
+   - Stack<string> (pila): el historial de jugadas, en Combate.
+     Cada jugada se guarda con Push y la más reciente se ve con Peek.
+   - En FrmCombate se muestran en ListBox: "MI BANCA", "BANCA RIVAL" e "HISTORIAL DE JUGADAS".
 
 4) REGLAS
    - Triángulo: Agua > Fuego > Aire > Tierra > Agua (x1.5 ventaja, x0.5 desventaja).
-   - Equipo de 3; cada turno UNA acción: Atacar, Habilidad, Relevo o Descansar.
-   - No se puede relevar dos turnos seguidos. Si tu personaje cae, eliges relevo gratis.
+   - Equipo de 3; cada turno UNA accion: Atacar, Habilidad de ataque, Habilidad de utilidad,
+     Relevo o Pasar. Cada personaje tiene 2 habilidades, cada una con su costo de energia y recarga:
+       Fuego (dano puro): la utilidad sube el ataque.   Agua (apoyo): la utilidad cura.
+       Tierra (tanques): la utilidad sube la defensa o devuelve dano.
+       Aire (veloces): la utilidad da energia, sube el ataque o cura.
+     Pasa el mouse sobre un boton de habilidad para ver lo que hace.
+   - El primer personaje del equipo sale al campo; los otros dos esperan en la cola en ese orden.
+   - Relevo: entra el primero de la cola. No se puede relevar dos turnos seguidos.
+   - Si tu personaje cae, entra automáticamente el siguiente de la cola (gratis).
+   - TERREMOTO: en cada ronda hay 25% de probabilidad. Los dos personajes en el campo pierden
+     Min(f'(t), 20% de su vida máxima), con f(t) = 2t² + 5t y su derivada f'(t) = 4t + 5 (t = ronda).
+     Nunca baja de 1 HP. La fórmula queda en el historial, la ventana tiembla y aparece un banner.
+     Los numeros que suben sobre las cartas son el dano (rojo), la curacion (verde) y el Terremoto (naranja).
    - Escenario: +10% ATK a las cartas de su elemento.
+   - MODO LAN: en el menu, "PARTIDA LAN". Un PC crea la partida (anfitrion, elige el escenario) y el otro se
+     une con la IP que ve el anfitrion (puerto 8888). Juegan por turnos cada uno en su PC.
    - Ronda 30: muerte súbita (+15% de ATK por ronda) para evitar combates eternos.
-   - Los datos base de CatalogoBase.cs deben coincidir con los INSERT de los scripts SQL.
 
 5) NOTA SOBRE EL DISEÑADOR
    Los formularios construyen sus controles por código (sin archivos .Designer.cs),

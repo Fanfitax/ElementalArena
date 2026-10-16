@@ -1,53 +1,31 @@
 namespace ArenaElemental.Modelos
 {
     /// <summary>
-    /// Facción Fuego: fuerte contra Aire, débil contra Agua.
-    /// Habilidad: Llamarada (daño x2 que ignora el 50% de la defensa).
+    /// Facción Fuego (daño puro). Su habilidad de utilidad potencia el ataque.
+    /// Hereda todo de Personaje; solo escribe lo que es propio de su elemento:
+    /// el triángulo elemental (ObtenerMultiplicador) y la manera de copiarse (CrearCopia).
     /// </summary>
     public class CartaFuego : Personaje
     {
-        private const double FactorLlamarada = 2.0;
-        private const double DefensaIgnoradaLlamarada = 0.5;
-
         public CartaFuego(int id, string nombre, int hpMax, int atk, int defensa,
-                          int energiaMax, int empatia, int costoHabilidad, int cooldownHabilidad)
-            : base(id, nombre, Elemento.Fuego, hpMax, atk, defensa, energiaMax, empatia,
-                   "Llamarada", costoHabilidad, cooldownHabilidad)
+                          int energiaMax, int empatia, Habilidad habilidadAtaque, Habilidad habilidadUtilidad)
+            : base(id, nombre, Elemento.Fuego, hpMax, atk, defensa, energiaMax, empatia, habilidadAtaque, habilidadUtilidad)
         {
         }
 
-        public override bool HabilidadEsOfensiva
-        {
-            get { return true; }
-        }
-
+        /// <summary>Una copia nueva con la vida y la energía llenas (y copias de las habilidades).</summary>
         public override Personaje CrearCopia()
         {
-            return new CartaFuego(Id, Nombre, HpMax, Atk, Defensa, EnergiaMax, Empatia, CostoHabilidad, CooldownHabilidad);
+            return new CartaFuego(Id, Nombre, HpMax, Atk, Defensa, EnergiaMax, Empatia,
+                                  HabilidadAtaque.Clonar(), HabilidadUtilidad.Clonar());
         }
 
+        /// <summary>Triángulo: Fuego gana contra Aire y pierde contra Agua.</summary>
         public override double ObtenerMultiplicador(Elemento enemigo)
         {
-            switch (enemigo)
-            {
-                case Elemento.Aire: return MultiplicadorVentaja;      // Fuego > Aire
-                case Elemento.Agua: return MultiplicadorDesventaja;   // Agua > Fuego
-                default: return MultiplicadorNeutro;
-            }
-        }
-
-        public override string UsarHabilidadEspecial(Personaje objetivo)
-        {
-            ValidarObjetivo(objetivo);
-            if (!PuedeUsarHabilidad()) return MensajeHabilidadNoDisponible();
-            if (!objetivo.EstaVivo) return NombreHabilidad + " no puede dirigirse a un objetivo derrotado.";
-
-            double mult = ObtenerMultiplicador(objetivo.Elemento);
-            int dano = CalcularDanoPotenciado(objetivo, FactorLlamarada, DefensaIgnoradaLlamarada);
-            ConsumirHabilidad();
-            int real = objetivo.RecibirDano(dano);
-            return Nombre + " lanza " + NombreHabilidad + " sobre " + objetivo.Nombre
-                   + " y causa " + real + " de daño (ignora 50% de defensa)" + DescribirEfectividad(mult) + ".";
+            if (enemigo == Elemento.Aire) return MultiplicadorVentaja;
+            if (enemigo == Elemento.Agua) return MultiplicadorDesventaja;
+            return MultiplicadorNeutro;
         }
     }
 }

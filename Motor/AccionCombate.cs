@@ -1,5 +1,6 @@
 namespace ArenaElemental.Motor
 {
+    /// <summary>Lo que un equipo puede hacer en su turno.</summary>
     public enum TipoAccion
     {
         Atacar,
@@ -8,6 +9,7 @@ namespace ArenaElemental.Motor
         Pasar
     }
 
+    /// <summary>Cómo va el combate.</summary>
     public enum EstadoCombate
     {
         EnCurso,
@@ -15,27 +17,50 @@ namespace ArenaElemental.Motor
         VictoriaRival
     }
 
-    /// <summary>Acción que un equipo elige en su turno.</summary>
+    /// <summary>
+    /// La acción que un equipo elige en su turno. No se crea con "new": se usan los métodos
+    /// de abajo (AccionCombate.Atacar(), AccionCombate.Habilidad(0)...), que son más fáciles de leer.
+    /// </summary>
     public class AccionCombate
     {
-        private AccionCombate(TipoAccion tipo, int indice)
+        private AccionCombate(TipoAccion tipo, int numeroHabilidad, int indice)
         {
             Tipo = tipo;
+            NumeroHabilidad = numeroHabilidad;
             Indice = indice;
         }
 
         public TipoAccion Tipo { get; private set; }
 
-        /// <summary>
-        /// Relevo: posición (0-2) del personaje que entra.
-        /// Habilidad de apoyo: posición del aliado a apoyar (-1 = el personaje activo).
-        /// </summary>
+        /// <summary>Solo para Habilidad: 0 = habilidad de ataque, 1 = habilidad de utilidad.</summary>
+        public int NumeroHabilidad { get; private set; }
+
+        /// <summary>Solo para curar a un aliado: su posición en el equipo (-1 = no se eligió aliado).</summary>
         public int Indice { get; private set; }
 
-        public static AccionCombate Atacar() { return new AccionCombate(TipoAccion.Atacar, -1); }
-        public static AccionCombate Habilidad() { return new AccionCombate(TipoAccion.Habilidad, -1); }
-        public static AccionCombate HabilidadSobreAliado(int indiceAliado) { return new AccionCombate(TipoAccion.Habilidad, indiceAliado); }
-        public static AccionCombate Relevar(int indice) { return new AccionCombate(TipoAccion.Relevo, indice); }
-        public static AccionCombate Pasar() { return new AccionCombate(TipoAccion.Pasar, -1); }
+        public static AccionCombate Atacar()
+        {
+            return new AccionCombate(TipoAccion.Atacar, -1, -1);
+        }
+
+        public static AccionCombate Habilidad(int numero)
+        {
+            return new AccionCombate(TipoAccion.Habilidad, numero, -1);
+        }
+
+        public static AccionCombate HabilidadSobreAliado(int numero, int indiceAliado)
+        {
+            return new AccionCombate(TipoAccion.Habilidad, numero, indiceAliado);
+        }
+
+        public static AccionCombate Relevar()
+        {
+            return new AccionCombate(TipoAccion.Relevo, -1, -1);
+        }
+
+        public static AccionCombate Pasar()
+        {
+            return new AccionCombate(TipoAccion.Pasar, -1, -1);
+        }
     }
 }
