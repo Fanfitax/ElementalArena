@@ -6,22 +6,20 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Prepara las ilustraciones de los personajes para las cartas.
-    /// Las imágenes de la carpeta Imagenes son personajes de cuerpo completo sobre fondo blanco, así que
-    /// aquí se les quita el fondo, se recortan al personaje y se pintan sobre un fondo del color de su elemento.
-    /// El nombre del archivo es el nombre del personaje en minúsculas ("pyra.jpg"); sirve .png, .jpg o .jpeg
-    /// y también con tildes ("gólem.jpg") o sin ellas ("golem.jpg").
-    ///
-    /// Para quitar el fondo se usa un relleno por inundación (flood fill) con una Queue de puntos: se parte
-    /// de los bordes de la imagen y se avanza por todos los píxeles blancos vecinos. Esos píxeles se pintan
-    /// de magenta y se llama a Bitmap.MakeTransparent(Color.Magenta). Para que sea rápido, el trabajo se hace
-    /// sobre una copia reducida de la imagen (TamanoTrabajo) y cada píxel se lee una sola vez: GetPixel es lento,
-    /// así que primero se anota la "claridad" de cada píxel en una tabla y el relleno consulta esa tabla.
-    /// </summary>
+    // Prepara las ilustraciones de los personajes para las cartas.
+    // Las imágenes de la carpeta Imagenes son personajes de cuerpo completo sobre fondo blanco, así que
+    // aquí se les quita el fondo, se recortan al personaje y se pintan sobre un fondo del color de su elemento.
+    // El nombre del archivo es el nombre del personaje en minúsculas ("hestia.jpg"); sirve .png, .jpg o .jpeg
+    // y también con tildes ("faetón.jpg") o sin ellas ("faeton.jpg").
+    //
+    // Para quitar el fondo se usa un relleno por inundación (flood fill) con una Queue de puntos: se parte
+    // de los bordes de la imagen y se avanza por todos los píxeles blancos vecinos. Esos píxeles se pintan
+    // de magenta y se llama a Bitmap.MakeTransparent(Color.Magenta). Para que sea rápido, el trabajo se hace
+    // sobre una copia reducida de la imagen (TamanoTrabajo) y cada píxel se lee una sola vez: GetPixel es lento,
+    // así que primero se anota la "claridad" de cada píxel en una tabla y el relleno consulta esa tabla.
     public static class Ilustraciones
     {
-        private static readonly string[] Extensiones = new string[] { ".png", ".jpg", ".jpeg" };
+        private static string[] Extensiones = new string[] { ".png", ".jpg", ".jpeg" };
 
         // Lado más largo (en píxeles) de la copia sobre la que se quita el fondo.
         private const int TamanoTrabajo = 340;
@@ -31,54 +29,51 @@ namespace ArenaElemental.Formularios
         private const int BlancoPuro = 246;
         private const int BordeClaro = 195;   // un píxel así de claro pegado al fondo se considera parte del contorno blanco
 
-        // Personaje ya recortado (sin fondo). Si no hay imagen se guarda null para no volver a buscarla.
-        private static Dictionary<string, Bitmap> recortes = new Dictionary<string, Bitmap>();
+        // Personaje ya recortado (sin fondo). Dos listas paralelas: el recorte número i es del nombre número i.
+        // Si no hay imagen se guarda null para no volver a buscarla.
+        private static List<string> nombresRecortes = new List<string>();
+        private static List<Bitmap> recortes = new List<Bitmap>();
 
-        // Arte ya compuesto para cada tamaño (clave = nombre + tamaño).
-        private static Dictionary<string, Image> compuestas = new Dictionary<string, Image>();
+        // Arte ya compuesto para cada tamaño (la clave es el nombre + el tamaño). También dos listas paralelas.
+        private static List<string> clavesCompuestas = new List<string>();
+        private static List<Image> compuestas = new List<Image>();
 
-        /// <summary>
-        /// Devuelve la ilustración del personaje lista para mostrar en un PictureBox del tamaño indicado,
-        /// o null si no hay imagen (en ese caso la carta queda con un color sólido).
-        /// </summary>
+        // Devuelve la ilustración del personaje lista para mostrar en un PictureBox del tamaño indicado,
+        // o null si no hay imagen (en ese caso la carta queda con un color sólido).
         public static Image ObtenerArte(Personaje p, int ancho, int alto)
         {
-            string clave = NombreArchivo(p.Nombre) + "|" + ancho + "x" + alto;
-            Image arte;
-            if (compuestas.TryGetValue(clave, out arte))
-                return arte;
+            string clave = NombreArchivo(p.Clave) + "|" + ancho + "x" + alto;
+            int posicion = clavesCompuestas.IndexOf(clave);
+            if (posicion != -1)
+                return compuestas[posicion];
 
-            Bitmap recorte = ObtenerRecorte(p.Nombre);
-            if (recorte == null)
-                arte = null;
-            else
+            Image arte = null;
+            Bitmap recorte = ObtenerRecorte(p.Clave);
+            if (recorte != null)
                 arte = Componer(recorte, p.Elemento, ancho, alto);
-            compuestas[clave] = arte;
+            clavesCompuestas.Add(clave);
+            compuestas.Add(arte);
             return arte;
         }
 
-        /// <summary>
-        /// El personaje sin fondo (transparente), reducido para que quepa en el tamaño indicado sin deformarse.
-        /// Sirve para mostrarlo suelto sobre cualquier fondo (por ejemplo en el menú). Devuelve null si no hay imagen.
-        /// </summary>
+        // El personaje sin fondo (transparente), reducido para que quepa en el tamaño indicado sin deformarse.
+        // Sirve para mostrarlo suelto sobre cualquier fondo (por ejemplo en el menú). Devuelve null si no hay imagen.
         public static Image ObtenerPersonajeEncajado(string nombrePersonaje, int anchoMaximo, int altoMaximo)
         {
             string clave = NombreArchivo(nombrePersonaje) + "|encajado|" + anchoMaximo + "x" + altoMaximo;
-            Image imagen;
-            if (compuestas.TryGetValue(clave, out imagen))
-                return imagen;
+            int posicion = clavesCompuestas.IndexOf(clave);
+            if (posicion != -1)
+                return compuestas[posicion];
 
+            Image imagen = null;
             Bitmap recorte = ObtenerRecorte(nombrePersonaje);
-            if (recorte == null)
-            {
-                imagen = null;
-            }
-            else
+            if (recorte != null)
             {
                 double escala = Math.Min((double)anchoMaximo / recorte.Width, (double)altoMaximo / recorte.Height);
                 imagen = Reducir(recorte, (int)(recorte.Width * escala), (int)(recorte.Height * escala));
             }
-            compuestas[clave] = imagen;
+            clavesCompuestas.Add(clave);
+            compuestas.Add(imagen);
             return imagen;
         }
 
@@ -95,7 +90,7 @@ namespace ArenaElemental.Formularios
                         .Replace('ó', 'o').Replace('ú', 'u').Replace('ñ', 'n');
         }
 
-        /// <summary>Busca el archivo del personaje (con o sin tildes y con cada extensión) y lo carga. Devuelve null si no existe.</summary>
+        // Busca el archivo del personaje (con o sin tildes y con cada extensión) y lo carga. Devuelve null si no existe.
         private static Image CargarOriginal(string nombre)
         {
             string[] nombres = new string[] { nombre, QuitarTildes(nombre) };
@@ -113,11 +108,11 @@ namespace ArenaElemental.Formularios
         private static Bitmap ObtenerRecorte(string nombrePersonaje)
         {
             string nombre = NombreArchivo(nombrePersonaje);
-            Bitmap recorte;
-            if (recortes.TryGetValue(nombre, out recorte))
-                return recorte;
+            int posicion = nombresRecortes.IndexOf(nombre);
+            if (posicion != -1)
+                return recortes[posicion];
 
-            recorte = null;
+            Bitmap recorte = null;
             Image original = CargarOriginal(nombre);
             if (original != null)
             {
@@ -131,13 +126,14 @@ namespace ArenaElemental.Formularios
                 }
                 original.Dispose();
             }
-            recortes[nombre] = recorte;
+            nombresRecortes.Add(nombre);
+            recortes.Add(recorte);
             return recorte;
         }
 
         // ---------- Quitar el fondo blanco ----------
 
-        /// <summary>Copia la imagen en un Bitmap nuevo del tamaño indicado (dibujo directo con Graphics).</summary>
+        // Copia la imagen en un Bitmap nuevo del tamaño indicado (dibujo directo con Graphics).
         private static Bitmap Reducir(Image origen, int ancho, int alto)
         {
             Bitmap copia = new Bitmap(Math.Max(1, ancho), Math.Max(1, alto));
@@ -149,15 +145,13 @@ namespace ArenaElemental.Formularios
             return copia;
         }
 
-        /// <summary>
-        /// Quita el fondo blanco y recorta al personaje:
-        ///  1) se reduce la imagen,
-        ///  2) se marca como fondo todo el blanco conectado con los bordes,
-        ///  3) se marcan también las zonas blancas grandes encerradas (entre las piernas, por ejemplo);
-        ///     las chicas, como los ojos o la barba, se respetan,
-        ///  4) lo marcado se pinta de magenta y se vuelve transparente con MakeTransparent,
-        ///  5) se recorta alrededor de lo que quedó.
-        /// </summary>
+        // Quita el fondo blanco y recorta al personaje:
+        //  1) se reduce la imagen,
+        //  2) se marca como fondo todo el blanco conectado con los bordes,
+        //  3) se marcan también las zonas blancas grandes encerradas (entre las piernas, por ejemplo);
+        //     las chicas, como los ojos o la barba, se respetan,
+        //  4) lo marcado se pinta de magenta y se vuelve transparente con MakeTransparent,
+        //  5) se recorta alrededor de lo que quedó.
         private static Bitmap QuitarFondoYRecortar(Image origen)
         {
             double escala = Math.Min(1.0, (double)TamanoTrabajo / Math.Max(origen.Width, origen.Height));
@@ -181,10 +175,8 @@ namespace ArenaElemental.Formularios
             return Recortar(imagen, esFondo);
         }
 
-        /// <summary>
-        /// Anota la claridad de cada píxel: el menor de sus tres canales de color (rojo, verde y azul).
-        /// Un píxel es blanco cuando los tres canales son altos, o sea, cuando ese menor valor es alto.
-        /// </summary>
+        // Anota la claridad de cada píxel: el menor de sus tres canales de color (rojo, verde y azul).
+        // Un píxel es blanco cuando los tres canales son altos, o sea, cuando ese menor valor es alto.
         private static int[,] MedirClaridad(Bitmap imagen)
         {
             int[,] claridad = new int[imagen.Width, imagen.Height];
@@ -199,10 +191,8 @@ namespace ArenaElemental.Formularios
             return claridad;
         }
 
-        /// <summary>
-        /// Al borde del personaje le queda un contorno de píxeles casi blancos (por la compresión del JPG).
-        /// Se hacen dos pasadas: en cada una, el píxel claro que toca el fondo pasa a ser fondo también.
-        /// </summary>
+        // Al borde del personaje le queda un contorno de píxeles casi blancos (por la compresión del JPG).
+        // Se hacen dos pasadas: en cada una, el píxel claro que toca el fondo pasa a ser fondo también.
         private static void QuitarBordeClaro(int[,] claridad, bool[,] esFondo)
         {
             int ancho = claridad.GetLength(0);
@@ -224,10 +214,8 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>
-        /// Los píxeles del contorno que todavía son algo claros se hacen semitransparentes: cuanto más claros,
-        /// más transparentes. Así el borde se funde con cualquier fondo en vez de verse un halo blanco.
-        /// </summary>
+        // Los píxeles del contorno que todavía son algo claros se hacen semitransparentes: cuanto más claros,
+        // más transparentes. Así el borde se funde con cualquier fondo en vez de verse un halo blanco.
         private static void SuavizarBorde(Bitmap imagen, int[,] claridad, bool[,] esFondo)
         {
             for (int y = 1; y < imagen.Height - 1; y++)
@@ -246,10 +234,8 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>
-        /// Pinta de magenta los píxeles marcados como fondo. Se pintan por tramos horizontales con Graphics
-        /// (mucho más rápido que llamar a SetPixel en cada píxel).
-        /// </summary>
+        // Pinta de magenta los píxeles marcados como fondo. Se pintan por tramos horizontales con Graphics
+        // (mucho más rápido que llamar a SetPixel en cada píxel).
         private static void PintarFondoDeMagenta(Bitmap imagen, bool[,] esFondo)
         {
             using (Graphics g = Graphics.FromImage(imagen))
@@ -274,7 +260,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Todo el blanco que toca el borde de la imagen es fondo.</summary>
+        // Todo el blanco que toca el borde de la imagen es fondo.
         private static void MarcarFondoDeLosBordes(int[,] claridad, bool[,] esFondo, bool[,] visitado)
         {
             int ancho = claridad.GetLength(0);
@@ -300,7 +286,7 @@ namespace ArenaElemental.Formularios
                 esFondo[p.X, p.Y] = true;
         }
 
-        /// <summary>Las zonas de blanco puro encerradas dentro del personaje: si son grandes, también son fondo.</summary>
+        // Las zonas de blanco puro encerradas dentro del personaje: si son grandes, también son fondo.
         private static void MarcarZonasBlancasGrandes(int[,] claridad, bool[,] esFondo, bool[,] visitado)
         {
             int ancho = claridad.GetLength(0);
@@ -320,10 +306,8 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>
-        /// Relleno por inundación: parte de un píxel blanco y, con una cola (Queue), visita a sus vecinos de arriba,
-        /// abajo, izquierda y derecha que también sean blancos. Devuelve todos los píxeles de esa zona.
-        /// </summary>
+        // Relleno por inundación: parte de un píxel blanco y, con una cola (Queue), visita a sus vecinos de arriba,
+        // abajo, izquierda y derecha que también sean blancos. Devuelve todos los píxeles de esa zona.
         private static List<Point> BuscarZonaBlanca(int[,] claridad, bool[,] visitado, int inicioX, int inicioY, int minimoBlanco)
         {
             List<Point> zona = new List<Point>();
@@ -357,7 +341,7 @@ namespace ArenaElemental.Formularios
         }
 
 
-        /// <summary>Recorta la imagen al rectángulo que contiene al personaje (los píxeles que no son fondo).</summary>
+        // Recorta la imagen al rectángulo que contiene al personaje (los píxeles que no son fondo).
         private static Bitmap Recortar(Bitmap imagen, bool[,] esFondo)
         {
             int minX = imagen.Width, minY = imagen.Height, maxX = -1, maxY = -1;
@@ -392,7 +376,7 @@ namespace ArenaElemental.Formularios
 
         // ---------- Armar la ilustración de la carta ----------
 
-        /// <summary>Pinta un fondo con degradado y resplandor del color del elemento y encima al personaje.</summary>
+        // Pinta un fondo con degradado y resplandor del color del elemento y encima al personaje.
         private static Image Componer(Bitmap personaje, Elemento elemento, int ancho, int alto)
         {
             int radio = 7;
@@ -430,7 +414,7 @@ namespace ArenaElemental.Formularios
                 }
 
                 // El personaje, ajustado al tamaño sin deformarse y apoyado abajo.
-                double escala = Math.Min(ancho * 0.94 / personaje.Width, alto * 0.93 / personaje.Height);
+                double escala = Math.Min(ancho * 0.96 / personaje.Width, alto * 0.95 / personaje.Height);
                 int anchoPersonaje = (int)(personaje.Width * escala);
                 int altoPersonaje = (int)(personaje.Height * escala);
                 int x = (ancho - anchoPersonaje) / 2;

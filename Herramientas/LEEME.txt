@@ -1,9 +1,0 @@
-Herramientas (NO forman parte del juego ni se compilan con el proyecto)
-
-GeneradorTablero.cs: dibuja con GDI+ el fondo del combate (Imagenes\tablero.jpg).
-Para regenerarlo:  csc GeneradorTablero.cs  y luego  GeneradorTablero.exe Imagenes
-Puedes reemplazar tablero.jpg por tu propia imagen (recomendado 1264 x 500 px).
-
-GeneradorSonidos.cs: sintetiza los efectos de Sonidos\ (ataque, habilidad, relevo, terremoto) en formato WAV PCM.
-Para regenerarlos:  csc GeneradorSonidos.cs  y luego  GeneradorSonidos.exe Sonidos
-Puedes reemplazar los .wav por los tuyos con el mismo nombre (deben ser PCM, no MP3).

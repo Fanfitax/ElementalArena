@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using ArenaElemental.Datos;
+using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// El ranking de todos los jugadores: un podio con los tres primeros y la tabla completa debajo.
-    /// El jugador actual aparece resaltado en la tabla. Los puntos son: victoria 3, derrota 1, abandono 0.
-    /// </summary>
+    // El ranking de todos los jugadores: un podio con los tres primeros y la tabla completa debajo.
+    // El jugador actual aparece resaltado en la tabla. Los puntos son: victoria 3, derrota 1, abandono 0.
     public class FrmRanking : FormularioModerno
     {
         private static Color Oro = Color.FromArgb(255, 205, 60);
@@ -32,7 +31,7 @@ namespace ArenaElemental.Formularios
             Controls.Add(titulo);
 
             Label sub = Estilo.CrearEtiqueta(
-                "Puntos: victoria = " + PuestoRanking.PuntosPorVictoria + "  ·  derrota = " + PuestoRanking.PuntosPorDerrota + "  ·  abandono = 0",
+                Idioma.Texto("Puntos: victoria = ", "Points: win = ") + PuestoRanking.PuntosPorVictoria + Idioma.Texto("  ·  derrota = ", "  ·  loss = ") + PuestoRanking.PuntosPorDerrota + Idioma.Texto("  ·  abandono = 0", "  ·  forfeit = 0"),
                 26, 50, 700, 20, 10.5f, false);
             sub.ForeColor = Estilo.TextoSuave;
             Controls.Add(sub);
@@ -60,7 +59,7 @@ namespace ArenaElemental.Formularios
 
             if (ranking.Count == 0)
             {
-                Label vacio = Estilo.CrearEtiqueta("Todavía no hay partidas. ¡Juega una y aparece en el ranking!", 0, 150, 876, 30, 12f, true);
+                Label vacio = Estilo.CrearEtiqueta(Idioma.Texto("Todavía no hay partidas. ¡Juega una y aparece en el ranking!", "There are no matches yet. Play one and appear in the ranking!"), 0, 150, 876, 30, 12f, true);
                 vacio.ForeColor = Estilo.TextoSuave;
                 vacio.TextAlign = ContentAlignment.MiddleCenter;
                 marco.Controls.Add(vacio);
@@ -69,7 +68,7 @@ namespace ArenaElemental.Formularios
 
             Button cerrar = new Button();
             cerrar.SetBounds(780, 540, 120, 40);
-            Estilo.EstilizarBoton(cerrar, "Cerrar", Estilo.Acento);
+            Estilo.EstilizarBoton(cerrar, Idioma.Texto("Cerrar", "Close"), Estilo.Acento);
             cerrar.Click += Cerrar_Click;
             Controls.Add(cerrar);
         }
@@ -79,7 +78,7 @@ namespace ArenaElemental.Formularios
             Close();
         }
 
-        /// <summary>Al mostrarse la ventana el DataGridView selecciona la primera fila: se quita para que solo se vea el resaltado del jugador.</summary>
+        // Al mostrarse la ventana el DataGridView selecciona la primera fila: se quita para que solo se vea el resaltado del jugador.
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
@@ -92,7 +91,7 @@ namespace ArenaElemental.Formularios
             base.Dispose(disposing);
         }
 
-        /// <summary>Una tarjeta del podio con el puesto, el nombre y los puntos. Si no hay jugador queda vacía.</summary>
+        // Una tarjeta del podio con el puesto, el nombre y los puntos. Si no hay jugador queda vacía.
         private void CrearTarjetaPodio(int posicion, PuestoRanking puesto, Color color)
         {
             Panel tarjeta = new Panel();
@@ -106,17 +105,17 @@ namespace ArenaElemental.Formularios
             franja.BackColor = color;
             tarjeta.Controls.Add(franja);
 
-            Label lugar = Estilo.CrearEtiqueta((posicion + 1) + ".º", 16, 10, 70, 70, 28f, true);
+            Label lugar = Estilo.CrearEtiqueta((posicion + 1) + Idioma.Texto(".º", "."), 16, 10, 70, 70, 28f, true);
             lugar.ForeColor = color;
             lugar.TextAlign = ContentAlignment.MiddleCenter;
             tarjeta.Controls.Add(lugar);
 
             string nombre = "—";
-            string detalle = "Puesto libre";
+            string detalle = Idioma.Texto("Puesto libre", "Free spot");
             if (puesto != null)
             {
                 nombre = puesto.Jugador;
-                detalle = puesto.Puntos + " pts  ·  " + puesto.Victorias + " V / " + puesto.Derrotas + " D";
+                detalle = puesto.Puntos + " pts  ·  " + puesto.Victorias + Idioma.Texto(" V / ", " W / ") + puesto.Derrotas + Idioma.Texto(" D", " L");
             }
 
             Label lblNombre = Estilo.CrearEtiqueta(nombre, 92, 16, 184, 30, 15f, true);
@@ -134,13 +133,13 @@ namespace ArenaElemental.Formularios
             Estilo.EstilizarTabla(dgv);
 
             Estilo.AgregarColumna(dgv, "Posicion", "#", 40, null);
-            Estilo.AgregarColumna(dgv, "Jugador", "Jugador", 170, null);
-            Estilo.AgregarColumna(dgv, "Puntos", "Puntos", 70, null);
-            Estilo.AgregarColumna(dgv, "Partidas", "Partidas", 70, null);
-            Estilo.AgregarColumna(dgv, "Victorias", "Victorias", 70, null);
-            Estilo.AgregarColumna(dgv, "Derrotas", "Derrotas", 70, null);
-            Estilo.AgregarColumna(dgv, "Efectividad", "% victorias", 85, null);
-            Estilo.AgregarColumna(dgv, "DanoTotal", "Daño total", 85, null);
+            Estilo.AgregarColumna(dgv, "Jugador", Idioma.Texto("Jugador", "Player"), 170, null);
+            Estilo.AgregarColumna(dgv, "Puntos", Idioma.Texto("Puntos", "Points"), 70, null);
+            Estilo.AgregarColumna(dgv, "Partidas", Idioma.Texto("Partidas", "Matches"), 70, null);
+            Estilo.AgregarColumna(dgv, "Victorias", Idioma.Texto("Victorias", "Victories"), 70, null);
+            Estilo.AgregarColumna(dgv, "Derrotas", Idioma.Texto("Derrotas", "Defeats"), 70, null);
+            Estilo.AgregarColumna(dgv, "Efectividad", Idioma.Texto("% victorias", "% wins"), 85, null);
+            Estilo.AgregarColumna(dgv, "DanoTotal", Idioma.Texto("Daño total", "Total damage"), 85, null);
             dgv.DataSource = ranking;
 
             // Los colores se deciden al dibujar cada celda (las filas aún no existen al asignar los datos).
@@ -149,13 +148,13 @@ namespace ArenaElemental.Formularios
             return dgv;
         }
 
-        /// <summary>Medalla de color para los tres primeros y fila resaltada para el jugador actual.</summary>
+        // Medalla de color para los tres primeros y fila resaltada para el jugador actual.
         private void Tabla_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             DataGridView dgv = (DataGridView)sender;
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
 
-            PuestoRanking puesto = dgv.Rows[e.RowIndex].DataBoundItem as PuestoRanking;
+            PuestoRanking puesto = (PuestoRanking)dgv.Rows[e.RowIndex].DataBoundItem;
             if (puesto == null) return;
 
             if (puesto.Jugador.ToLower() == nombreJugador.Trim().ToLower())

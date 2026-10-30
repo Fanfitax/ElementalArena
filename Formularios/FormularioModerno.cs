@@ -5,14 +5,12 @@ using System.Windows.Forms;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Formulario base de todas las pantallas del juego. Su fondo es la imagen Imagenes\Inicio.jpg estirada
-    /// al tamaño de la ventana (con un velo oscuro suave para que los textos se lean).
-    /// El fondo se prepara una sola vez en una imagen y después solo se copia, así la ventana no parpadea.
-    /// Si Inicio.jpg no existe, se pinta el fondo geométrico antiguo (ver Estilo.PintarFondo).
-    /// La pantalla de combate es la excepción: pone su propia BackgroundImage (la del escenario) y entonces
-    /// este fondo general se ignora.
-    /// </summary>
+    // Formulario base de todas las pantallas del juego. Su fondo es la imagen Imagenes\Inicio.jpg estirada
+    // al tamaño de la ventana (con un velo oscuro suave para que los textos se lean).
+    // El fondo se prepara una sola vez en una imagen y después solo se copia, así la ventana no parpadea.
+    // Si Inicio.jpg no existe, se pinta el fondo geométrico antiguo (ver Estilo.PintarFondo).
+    // La pantalla de combate es la excepción: pone su propia BackgroundImage (la del escenario) y entonces
+    // este fondo general se ignora.
     public class FormularioModerno : Form
     {
         private const string ArchivoFondo = "Inicio.jpg";
@@ -32,10 +30,8 @@ namespace ArenaElemental.Formularios
             DoubleBuffered = true;
         }
 
-        /// <summary>
-        /// True (por defecto) pinta el fondo general del juego. Si se pone en false el formulario usa
-        /// solo su BackColor (un color liso), que sirve de respaldo cuando falta una imagen de fondo.
-        /// </summary>
+        // True (por defecto) pinta el fondo general del juego. Si se pone en false el formulario usa
+        // solo su BackColor (un color liso), que sirve de respaldo cuando falta una imagen de fondo.
         public bool FondoModerno
         {
             get { return fondoModerno; }
@@ -58,7 +54,7 @@ namespace ArenaElemental.Formularios
             e.Graphics.DrawImageUnscaled(fondo, 0, 0);
         }
 
-        /// <summary>Estira Inicio.jpg al tamaño de la ventana y le pone el velo; si no hay imagen, el fondo geométrico.</summary>
+        // Estira Inicio.jpg al tamaño de la ventana y le pone el velo; si no hay imagen, el fondo geométrico.
         private Bitmap PrepararFondo(int ancho, int alto)
         {
             Bitmap resultado = new Bitmap(ancho, alto);

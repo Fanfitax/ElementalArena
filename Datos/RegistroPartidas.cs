@@ -4,13 +4,11 @@ using System.IO;
 
 namespace ArenaElemental.Datos
 {
-    /// <summary>
-    /// El historial de partidas jugadas. Vive en una lista estática y también se guarda en un archivo de texto
-    /// (partidas.txt, junto al programa) para que el historial y el ranking no se pierdan al cerrar el juego.
-    /// Cada línea del archivo es una partida con sus datos separados por "|":
-    ///   jugador|equipo|escenario|resultado|rondas|daño|fecha
-    /// Si el archivo no se puede leer o escribir, el juego sigue funcionando solo en memoria.
-    /// </summary>
+    // El historial de partidas jugadas. Vive en una lista estática y también se guarda en un archivo de texto
+    // (partidas.txt, junto al programa) para que el historial y el ranking no se pierdan al cerrar el juego.
+    // Cada línea del archivo es una partida con sus datos separados por "|":
+    //   jugador|equipo|escenario|resultado|rondas|daño|fecha
+    // Si el archivo no se puede leer o escribir, el juego sigue funcionando solo en memoria.
     public static class RegistroPartidas
     {
         private const char Separador = '|';
@@ -18,13 +16,13 @@ namespace ArenaElemental.Datos
         private static List<EstadisticaPartida> partidas = new List<EstadisticaPartida>();
         private static string rutaArchivo = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "partidas.txt");
 
-        // Se ejecuta una sola vez, la primera vez que se usa la clase: carga las partidas guardadas.
-        static RegistroPartidas()
+        // Se llama una sola vez al iniciar el programa (desde Main): carga las partidas guardadas.
+        public static void Cargar()
         {
             CargarDelArchivo();
         }
 
-        /// <summary>Guarda una partida nueva en el historial (y en el archivo).</summary>
+        // Guarda una partida nueva en el historial (y en el archivo).
         public static void Agregar(string jugador, string equipo, string escenario, string resultado, int turnos, int danoTotal)
         {
             EstadisticaPartida p = new EstadisticaPartida();
@@ -41,7 +39,7 @@ namespace ArenaElemental.Datos
             GuardarEnArchivo(p);
         }
 
-        /// <summary>Las partidas de un jugador, de la más reciente a la más antigua (sin importar mayúsculas).</summary>
+        // Las partidas de un jugador, de la más reciente a la más antigua (sin importar mayúsculas).
         public static List<EstadisticaPartida> DeJugador(string jugador)
         {
             List<EstadisticaPartida> lista = new List<EstadisticaPartida>();
@@ -55,48 +53,70 @@ namespace ArenaElemental.Datos
 
         // ---------- Ranking ----------
 
-        /// <summary>
-        /// La tabla de posiciones de todos los jugadores, del primero al último.
-        /// Se ordena por puntos; si empatan, por victorias, luego por % de victorias y por último por nombre.
-        /// </summary>
+        // La tabla de posiciones de todos los jugadores, del primero al último.
+        // Se ordena por puntos; si empatan, por victorias, luego por % de victorias y por último por nombre.
         public static List<PuestoRanking> ObtenerRanking()
         {
             // Primero se agrupan las partidas por jugador (sin importar mayúsculas).
-            Dictionary<string, List<EstadisticaPartida>> porJugador = new Dictionary<string, List<EstadisticaPartida>>();
+            // Dos listas paralelas: el jugador número i tiene sus partidas en la lista número i.
+            List<string> nombresEnMinuscula = new List<string>();
+            List<List<EstadisticaPartida>> partidasPorJugador = new List<List<EstadisticaPartida>>();
             foreach (EstadisticaPartida p in partidas)
             {
                 string clave = p.Jugador.ToLower();
-                if (!porJugador.ContainsKey(clave))
-                    porJugador[clave] = new List<EstadisticaPartida>();
-                porJugador[clave].Add(p);
+                int posicion = nombresEnMinuscula.IndexOf(clave);
+                if (posicion == -1)
+                {
+                    nombresEnMinuscula.Add(clave);
+                    partidasPorJugador.Add(new List<EstadisticaPartida>());
+                    posicion = nombresEnMinuscula.Count - 1;
+                }
+                partidasPorJugador[posicion].Add(p);
             }
 
             List<PuestoRanking> ranking = new List<PuestoRanking>();
-            foreach (List<EstadisticaPartida> lista in porJugador.Values)
+            foreach (List<EstadisticaPartida> lista in partidasPorJugador)
             {
                 // Se muestra el nombre tal como lo escribió la última vez.
                 string nombre = lista[lista.Count - 1].Jugador;
                 ranking.Add(new PuestoRanking(nombre, lista));
             }
 
-            ranking.Sort(CompararPuestos);
+            OrdenarRanking(ranking);
             for (int i = 0; i < ranking.Count; i++)
                 ranking[i].Posicion = i + 1;
             return ranking;
         }
 
-        /// <summary>Dice cuál de dos jugadores va primero (número negativo = "a" va antes que "b").</summary>
-        private static int CompararPuestos(PuestoRanking a, PuestoRanking b)
+        // Ordena la lista de mejor a peor: en cada vuelta busca el mejor de los que faltan y lo pone en su lugar.
+        private static void OrdenarRanking(List<PuestoRanking> ranking)
         {
-            if (a.Puntos != b.Puntos) return b.Puntos.CompareTo(a.Puntos);
-            if (a.Victorias != b.Victorias) return b.Victorias.CompareTo(a.Victorias);
-            if (a.PorcentajeVictorias != b.PorcentajeVictorias) return b.PorcentajeVictorias.CompareTo(a.PorcentajeVictorias);
-            return string.Compare(a.Jugador, b.Jugador, StringComparison.CurrentCultureIgnoreCase);
+            for (int i = 0; i < ranking.Count - 1; i++)
+            {
+                int mejor = i;
+                for (int j = i + 1; j < ranking.Count; j++)
+                {
+                    if (VaAntes(ranking[j], ranking[mejor])) mejor = j;
+                }
+
+                PuestoRanking auxiliar = ranking[i];
+                ranking[i] = ranking[mejor];
+                ranking[mejor] = auxiliar;
+            }
+        }
+
+        // Dice si el jugador "a" va antes que el "b": más puntos, luego más victorias, luego mejor % y por último el nombre.
+        private static bool VaAntes(PuestoRanking a, PuestoRanking b)
+        {
+            if (a.Puntos != b.Puntos) return a.Puntos > b.Puntos;
+            if (a.Victorias != b.Victorias) return a.Victorias > b.Victorias;
+            if (a.PorcentajeVictorias != b.PorcentajeVictorias) return a.PorcentajeVictorias > b.PorcentajeVictorias;
+            return string.Compare(a.Jugador, b.Jugador, StringComparison.CurrentCultureIgnoreCase) < 0;
         }
 
         // ---------- Archivo de texto ----------
 
-        /// <summary>El separador no puede aparecer dentro de un nombre porque rompería la línea del archivo.</summary>
+        // El separador no puede aparecer dentro de un nombre porque rompería la línea del archivo.
         private static string Limpiar(string texto)
         {
             if (texto == null) return string.Empty;

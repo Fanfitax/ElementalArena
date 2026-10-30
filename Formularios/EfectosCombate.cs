@@ -6,17 +6,15 @@ using System.Windows.Forms;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Efectos de partículas del combate: chispas cuando se recibe un golpe, brillos que suben al curar,
-    /// un estallido cuando cae un personaje y escombros que caen durante el Terremoto.
-    ///
-    /// Es una ventana sin borde que se coloca justo encima del tablero. Su fondo es de un color "clave"
-    /// (TransparencyKey), así que solo se ven las partículas y todo lo demás es transparente, incluso al
-    /// hacer clic (los clics pasan al combate). Así se dibujan decenas de partículas en una sola pasada,
-    /// en lugar de crear un control por partícula, que haría la pantalla lenta.
-    /// Todas las posiciones se dan en coordenadas del formulario del combate.
-    /// La ventana solo está visible (y el reloj solo corre) mientras quedan partículas.
-    /// </summary>
+    // Efectos de partículas del combate: chispas cuando se recibe un golpe, brillos que suben al curar,
+    // un estallido cuando cae un personaje y escombros que caen durante el Terremoto.
+    //
+    // Es una ventana sin borde que se coloca justo encima del tablero. Su fondo es de un color "clave"
+    // (TransparencyKey), así que solo se ven las partículas y todo lo demás es transparente, incluso al
+    // hacer clic (los clics pasan al combate). Así se dibujan decenas de partículas en una sola pasada,
+    // en lugar de crear un control por partícula, que haría la pantalla lenta.
+    // Todas las posiciones se dan en coordenadas del formulario del combate.
+    // La ventana solo está visible (y el reloj solo corre) mientras quedan partículas.
     public class EfectosCombate : Form
     {
         private const int MaximoParticulas = 400;
@@ -58,13 +56,13 @@ namespace ArenaElemental.Formularios
             duenio.SizeChanged += Duenio_Cambio;
         }
 
-        /// <summary>Se muestra sin quitarle el foco al combate.</summary>
+        // Se muestra sin quitarle el foco al combate.
         protected override bool ShowWithoutActivation
         {
             get { return true; }
         }
 
-        /// <summary>Sin foco, fuera de la barra de tareas y sin capturar el ratón: los clics pasan al combate.</summary>
+        // Sin foco, fuera de la barra de tareas y sin capturar el ratón: los clics pasan al combate.
         protected override CreateParams CreateParams
         {
             get
@@ -77,7 +75,7 @@ namespace ArenaElemental.Formularios
 
         // ---------- Los efectos que usa el combate ----------
 
-        /// <summary>Chispas que salen disparadas hacia todos lados (golpe recibido).</summary>
+        // Chispas que salen disparadas hacia todos lados (golpe recibido).
         public void Chispas(Point centro, Color color, int cantidad)
         {
             for (int i = 0; i < cantidad; i++)
@@ -88,7 +86,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Brillos que suben despacio con un vaivén (curación).</summary>
+        // Brillos que suben despacio con un vaivén (curación).
         public void Brillos(Point centro, Color color, int cantidad)
         {
             for (int i = 0; i < cantidad; i++)
@@ -99,7 +97,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Una explosión grande de partículas (cae un personaje).</summary>
+        // Una explosión grande de partículas (cae un personaje).
         public void Estallido(Point centro, Color color, int cantidad)
         {
             for (int i = 0; i < cantidad; i++)
@@ -112,7 +110,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Escombros y polvo que caen desde arriba por todo el ancho (Terremoto).</summary>
+        // Escombros y polvo que caen desde arriba por todo el ancho (Terremoto).
         public void Escombros(int ancho, int cantidad)
         {
             for (int i = 0; i < cantidad; i++)
@@ -124,7 +122,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Quita todas las partículas y oculta la capa.</summary>
+        // Quita todas las partículas y oculta la capa.
         public void Detener()
         {
             timer.Stop();
@@ -152,7 +150,7 @@ namespace ArenaElemental.Formularios
             Mostrar();
         }
 
-        /// <summary>Pone la capa sobre el tablero y arranca el reloj (si no estaba ya en marcha).</summary>
+        // Pone la capa sobre el tablero y arranca el reloj (si no estaba ya en marcha).
         private void Mostrar()
         {
             if (IsDisposed || duenio.IsDisposed || !duenio.Visible) return;
@@ -202,10 +200,8 @@ namespace ArenaElemental.Formularios
 
         // ---------- Dibujo ----------
 
-        /// <summary>
-        /// Dibuja todas las partículas: cuadritos que se encogen al envejecer. Se dibuja sin suavizado porque
-        /// los bordes suavizados se mezclarían con el color clave de la transparencia.
-        /// </summary>
+        // Dibuja todas las partículas: cuadritos que se encogen al envejecer. Se dibuja sin suavizado porque
+        // los bordes suavizados se mezclarían con el color clave de la transparencia.
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -228,7 +224,7 @@ namespace ArenaElemental.Formularios
 
         // ---------- Colores ----------
 
-        /// <summary>El mismo color pero un poco más claro o más oscuro, para que las partículas no sean todas iguales.</summary>
+        // El mismo color pero un poco más claro o más oscuro, para que las partículas no sean todas iguales.
         private Color Variar(Color color)
         {
             int cambio = azar.Next(-30, 60);

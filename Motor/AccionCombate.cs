@@ -1,6 +1,6 @@
 namespace ArenaElemental.Motor
 {
-    /// <summary>Lo que un equipo puede hacer en su turno.</summary>
+    // Lo que un equipo puede hacer en su turno.
     public enum TipoAccion
     {
         Atacar,
@@ -9,7 +9,7 @@ namespace ArenaElemental.Motor
         Pasar
     }
 
-    /// <summary>Cómo va el combate.</summary>
+    // Cómo va el combate.
     public enum EstadoCombate
     {
         EnCurso,
@@ -17,50 +17,39 @@ namespace ArenaElemental.Motor
         VictoriaRival
     }
 
-    /// <summary>
-    /// La acción que un equipo elige en su turno. No se crea con "new": se usan los métodos
-    /// de abajo (AccionCombate.Atacar(), AccionCombate.Habilidad(0)...), que son más fáciles de leer.
-    /// </summary>
+    // La acción que un equipo elige en su turno. Se crea con "new", por ejemplo:
+    //   new AccionCombate(TipoAccion.Atacar)
+    //   new AccionCombate(TipoAccion.Habilidad, 0)         habilidad de ataque
+    //   new AccionCombate(TipoAccion.Habilidad, 1, 2)      habilidad de utilidad sobre el aliado en la posición 2
     public class AccionCombate
     {
-        private AccionCombate(TipoAccion tipo, int numeroHabilidad, int indice)
+        public TipoAccion Tipo { get; private set; }
+
+        // Solo para Habilidad: 0 = habilidad de ataque, 1 = habilidad de utilidad.
+        public int NumeroHabilidad { get; private set; }
+
+        // Solo para curar a un aliado: su posición en el equipo (-1 = no se eligió aliado).
+        public int Indice { get; private set; }
+
+        public AccionCombate(TipoAccion tipo)
+        {
+            Tipo = tipo;
+            NumeroHabilidad = -1;
+            Indice = -1;
+        }
+
+        public AccionCombate(TipoAccion tipo, int numeroHabilidad)
         {
             Tipo = tipo;
             NumeroHabilidad = numeroHabilidad;
-            Indice = indice;
+            Indice = -1;
         }
 
-        public TipoAccion Tipo { get; private set; }
-
-        /// <summary>Solo para Habilidad: 0 = habilidad de ataque, 1 = habilidad de utilidad.</summary>
-        public int NumeroHabilidad { get; private set; }
-
-        /// <summary>Solo para curar a un aliado: su posición en el equipo (-1 = no se eligió aliado).</summary>
-        public int Indice { get; private set; }
-
-        public static AccionCombate Atacar()
+        public AccionCombate(TipoAccion tipo, int numeroHabilidad, int indiceAliado)
         {
-            return new AccionCombate(TipoAccion.Atacar, -1, -1);
-        }
-
-        public static AccionCombate Habilidad(int numero)
-        {
-            return new AccionCombate(TipoAccion.Habilidad, numero, -1);
-        }
-
-        public static AccionCombate HabilidadSobreAliado(int numero, int indiceAliado)
-        {
-            return new AccionCombate(TipoAccion.Habilidad, numero, indiceAliado);
-        }
-
-        public static AccionCombate Relevar()
-        {
-            return new AccionCombate(TipoAccion.Relevo, -1, -1);
-        }
-
-        public static AccionCombate Pasar()
-        {
-            return new AccionCombate(TipoAccion.Pasar, -1, -1);
+            Tipo = tipo;
+            NumeroHabilidad = numeroHabilidad;
+            Indice = indiceAliado;
         }
     }
 }

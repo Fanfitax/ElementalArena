@@ -7,13 +7,11 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// "Códice Elemental": galería de los 12 personajes con su lore y su lectura de Antropología Filosófica.
-    ///  - Izquierda: la lista de personajes agrupada por elemento.
-    ///  - Centro: la carta grande del personaje elegido y, debajo, el dilema que plantea.
-    ///  - Derecha: un panel oscuro con tres secciones (pestañas): Historia &amp; Lore, Dimensión Antropológica y Ficha Técnica.
-    /// Los textos salen de la clase LorePersonajes.
-    /// </summary>
+    // "Códice Elemental": galería de los 12 personajes con su lore y su lectura de Antropología Filosófica.
+    //  - Izquierda: la lista de personajes agrupada por elemento.
+    //  - Centro: la carta grande del personaje elegido y, debajo, el dilema que plantea.
+    //  - Derecha: un panel oscuro con tres secciones (pestañas): Historia &amp; Lore, Dimensión Antropológica y Ficha Técnica.
+    // Los textos salen de la clase LorePersonajes.
     public class FrmCodice : FormularioModerno
     {
         private static Color PanelOscuro = Color.FromArgb(205, 10, 12, 18);
@@ -29,7 +27,7 @@ namespace ArenaElemental.Formularios
 
         private Button[] botonesPersonaje;
         private Button[] botonesSeccion;
-        private string[] nombresSeccion = new string[] { "HISTORIA & LORE", "DIMENSIÓN ANTROPOLÓGICA", "FICHA TÉCNICA" };
+        private string[] nombresSeccion = new string[] { Idioma.Texto("HISTORIA & LORE", "HISTORY & LORE"), Idioma.Texto("DIMENSIÓN ANTROPOLÓGICA", "ANTHROPOLOGICAL DIMENSION"), Idioma.Texto("FICHA TÉCNICA", "TECH SHEET") };
         private VistaCarta carta;
         private Label lblDilema, lblNombreLore, lblConcepto;
         private RichTextBox texto;
@@ -42,11 +40,11 @@ namespace ArenaElemental.Formularios
         private Font fuenteNegrita = new Font("Segoe UI", 11f, FontStyle.Bold);
         private Font fuentePestana = new Font("Segoe UI", 9f, FontStyle.Bold);
 
-        public FrmCodice(IList<Personaje> personajes)
+        public FrmCodice(List<Personaje> personajes)
         {
             this.personajes = new List<Personaje>(personajes);
 
-            Estilo.AplicarFormulario(this, "Arena Elemental - Códice Elemental", 1120, 640);
+            Estilo.AplicarFormulario(this, Idioma.Texto("Arena Elemental - Códice Elemental", "Arena Elemental - Elemental Codex"), 1120, 640);
             ConstruirEncabezado();
             ConstruirGaleria();
             ConstruirCarta();
@@ -59,23 +57,23 @@ namespace ArenaElemental.Formularios
 
         private void ConstruirEncabezado()
         {
-            Label titulo = Estilo.CrearEtiqueta("CÓDICE ELEMENTAL", 20, 8, 600, 38, 22f, true);
+            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("CÓDICE ELEMENTAL", "ELEMENTAL CODEX"), 20, 8, 600, 38, 22f, true);
             titulo.ForeColor = Color.Gold;
             Controls.Add(titulo);
 
-            Label sub = Estilo.CrearEtiqueta("Galería de personajes · Historia y reflexión de Antropología Filosófica", 22, 46, 800, 20, 9.5f, false);
+            Label sub = Estilo.CrearEtiqueta(Idioma.Texto("Galería de personajes · Historia y reflexión de Antropología Filosófica", "Character gallery · History and reflection from Philosophical Anthropology"), 22, 46, 800, 20, 9.5f, false);
             sub.ForeColor = Estilo.TextoSuave;
             Controls.Add(sub);
 
             Button cerrar = new Button();
             cerrar.SetBounds(990, 14, 110, 32);
-            Estilo.EstilizarBoton(cerrar, "Volver", Estilo.PanelClaro);
+            Estilo.EstilizarBoton(cerrar, Idioma.Texto("Volver", "Back"), Estilo.PanelClaro);
             cerrar.Click += Volver_Click;
             Controls.Add(cerrar);
             CancelButton = cerrar;
         }
 
-        /// <summary>La lista de la izquierda: un encabezado por elemento y un botón por personaje.</summary>
+        // La lista de la izquierda: un encabezado por elemento y un botón por personaje.
         private void ConstruirGaleria()
         {
             Elemento[] elementos = new Elemento[] { Elemento.Fuego, Elemento.Agua, Elemento.Tierra, Elemento.Aire };
@@ -84,7 +82,7 @@ namespace ArenaElemental.Formularios
             for (int e = 0; e < elementos.Length; e++)
             {
                 int y = 76 + e * 134;
-                Label encabezado = Estilo.CrearEtiqueta(elementos[e].ToString().ToUpper() + "  ·  " + Estilo.RolDe(elementos[e]),
+                Label encabezado = Estilo.CrearEtiqueta(Idioma.NombreElemento(elementos[e]).ToUpper() + "  ·  " + Estilo.RolDe(elementos[e]),
                                                         20, y, 190, 18, 9f, true);
                 encabezado.ForeColor = Estilo.ColorDe(elementos[e]);
                 Controls.Add(encabezado);
@@ -108,7 +106,7 @@ namespace ArenaElemental.Formularios
 
         private void ConstruirCarta()
         {
-            carta = new VistaCarta(false);
+            carta = new VistaCarta(TamanoCarta.Grande);
             carta.Location = new Point(232, 76);
             Controls.Add(carta);
 
@@ -118,7 +116,7 @@ namespace ArenaElemental.Formularios
             Controls.Add(marco);
             Estilo.Redondear(marco, 12);
 
-            Label etiqueta = Estilo.CrearEtiqueta("EL DILEMA", 10, 6, 210, 16, 8.5f, true);
+            Label etiqueta = Estilo.CrearEtiqueta(Idioma.Texto("EL DILEMA", "THE DILEMMA"), 10, 6, 210, 16, 8.5f, true);
             etiqueta.ForeColor = Color.Gold;
             marco.Controls.Add(etiqueta);
 
@@ -127,7 +125,7 @@ namespace ArenaElemental.Formularios
             marco.Controls.Add(lblDilema);
         }
 
-        /// <summary>El panel de la derecha: las 3 pestañas, el nombre del personaje y el texto con barra de desplazamiento.</summary>
+        // El panel de la derecha: las 3 pestañas, el nombre del personaje y el texto con barra de desplazamiento.
         private void ConstruirPanelTexto()
         {
             Panel panel = new Panel();
@@ -144,7 +142,7 @@ namespace ArenaElemental.Formularios
                 Button b = new Button();
                 b.Tag = i;   // número de la sección
                 b.SetBounds(x, 12, anchos[i], 34);
-                b.UseMnemonic = false;   // para que el "&" de "HISTORIA & LORE" se vea como un símbolo y no como atajo de teclado
+                b.UseMnemonic = false;   // para que el "&" de Idioma.Texto("HISTORIA & LORE", "HISTORY & LORE") se vea como un símbolo y no como atajo de teclado
                 b.Click += Seccion_Click;
                 panel.Controls.Add(b);
                 botonesSeccion[i] = b;
@@ -204,11 +202,13 @@ namespace ArenaElemental.Formularios
         {
             Personaje p = personajes[indice];
             Button b = botonesPersonaje[indice];
-            Color color = elegido ? Estilo.ColorDe(p.Elemento) : Estilo.FondoDe(p.Elemento);
+            Color color = Estilo.FondoDe(p.Elemento);
+            if (elegido) color = Estilo.ColorDe(p.Elemento);
 
             Estilo.EstilizarBoton(b, "   " + p.Nombre, color);
             b.TextAlign = ContentAlignment.MiddleLeft;
-            b.ForeColor = (elegido && p.Elemento == Elemento.Aire) ? Color.FromArgb(20, 24, 40) : Color.White;
+            b.ForeColor = Color.White;
+            if (elegido && p.Elemento == Elemento.Aire) b.ForeColor = Color.FromArgb(20, 24, 40);
             b.FlatAppearance.MouseOverBackColor = Estilo.ColorDe(p.Elemento);
 
             // Miniatura de la ilustración a la izquierda (si no hay imagen, el botón queda solo con el nombre).
@@ -239,7 +239,7 @@ namespace ArenaElemental.Formularios
 
             FichaLore ficha = LorePersonajes.ObtenerFicha(p);
             lblNombreLore.Text = p.Nombre + " — " + ficha.Titulo;
-            lblConcepto.Text = p.Elemento.ToString().ToUpper() + "  ·  " + ficha.Concepto;
+            lblConcepto.Text = Idioma.NombreElemento(p.Elemento).ToUpper() + "  ·  " + ficha.Concepto;
             lblConcepto.ForeColor = Estilo.ColorDe(p.Elemento);
 
             MostrarContenido();
@@ -252,15 +252,22 @@ namespace ArenaElemental.Formularios
             MostrarContenido();
         }
 
-        /// <summary>La pestaña activa se pinta dorada; las demás en gris azulado.</summary>
+        // La pestaña activa se pinta dorada; las demás en gris azulado.
         private void ActualizarPestanas()
         {
             for (int i = 0; i < botonesSeccion.Length; i++)
             {
                 bool activa = (i == seccionActual);
-                Estilo.EstilizarBoton(botonesSeccion[i], nombresSeccion[i], activa ? Color.FromArgb(200, 150, 30) : Estilo.PanelClaro);
+                Color colorFondo = Estilo.PanelClaro;
+                Color colorTexto = Color.White;
+                if (activa)
+                {
+                    colorFondo = Color.FromArgb(200, 150, 30);
+                    colorTexto = Color.FromArgb(24, 18, 4);
+                }
+                Estilo.EstilizarBoton(botonesSeccion[i], nombresSeccion[i], colorFondo);
                 botonesSeccion[i].Font = fuentePestana;
-                botonesSeccion[i].ForeColor = activa ? Color.FromArgb(24, 18, 4) : Color.White;
+                botonesSeccion[i].ForeColor = colorTexto;
             }
         }
 
@@ -282,17 +289,17 @@ namespace ArenaElemental.Formularios
 
         private void EscribirHistoria()
         {
-            Escribir("HISTORIA", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("HISTORIA", "HISTORY"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
             Escribir(LorePersonajes.ObtenerHistoria(seleccionado) + "\n\n", fuenteNormal, Color.WhiteSmoke);
 
-            Escribir("EN LA ARENA", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("EN LA ARENA", "IN THE ARENA"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
-            Escribir(seleccionado.Nombre + " pelea como " + Estilo.RolDe(seleccionado.Elemento).ToLower() + " de la facción " +
-                     seleccionado.Elemento + ". Su habilidad de ataque es " + seleccionado.HabilidadAtaque.Nombre +
-                     " y su habilidad de utilidad, " + seleccionado.HabilidadUtilidad.Nombre + ".\n\n", fuenteNormal, Color.WhiteSmoke);
+            Escribir(seleccionado.Nombre + Idioma.Texto(" pelea como ", " fights in the role of ") + Estilo.RolDe(seleccionado.Elemento).ToLower() + Idioma.Texto(" de la facción ", " of the faction ") +
+                     Idioma.NombreElemento(seleccionado.Elemento) + Idioma.Texto(". Su habilidad de ataque es ", ". Its attack ability is ") + seleccionado.HabilidadAtaque.Nombre +
+                     Idioma.Texto(" y su habilidad de utilidad, ", " and its utility ability, ") + seleccionado.HabilidadUtilidad.Nombre + ".\n\n", fuenteNormal, Color.WhiteSmoke);
 
-            Escribir("Mira en la sección «Dimensión Antropológica» qué pregunta filosófica plantea este personaje.", fuenteSuave, Estilo.TextoSuave);
+            Escribir(Idioma.Texto("Mira en la sección «Dimensión Antropológica» qué pregunta filosófica plantea este personaje.", "Look in the «Anthropological Dimension» section for the philosophical question this character raises."), fuenteSuave, Estilo.TextoSuave);
         }
 
         private void EscribirAntropologia()
@@ -300,24 +307,24 @@ namespace ArenaElemental.Formularios
             Elemento elemento = seleccionado.Elemento;
             FichaLore ficha = LorePersonajes.ObtenerFicha(seleccionado);
 
-            Escribir("EJE DE LA FACCIÓN " + elemento.ToString().ToUpper(), fuenteSeccion, Estilo.ColorDe(elemento));
+            Escribir(Idioma.Texto("EJE DE LA FACCIÓN ", "AXIS OF THE FACTION ") + Idioma.NombreElemento(elemento).ToUpper(), fuenteSeccion, Estilo.ColorDe(elemento));
             Escribir("\n" + LorePersonajes.EjeDe(elemento) + "\n", fuenteCursiva, Color.WhiteSmoke);
             Escribir(LorePersonajes.ExplicacionDelEje(elemento) + "\n\n", fuenteSuave, Estilo.TextoSuave);
 
-            Escribir("REFLEXIÓN: " + ficha.Concepto.ToUpper(), fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("REFLEXIÓN: ", "REFLECTION: ") + ficha.Concepto.ToUpper(), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
             Escribir(ficha.Reflexion + "\n\n", fuenteNormal, Color.WhiteSmoke);
 
-            Escribir("EL DILEMA", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("EL DILEMA", "THE DILEMMA"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
             Escribir("«" + ficha.Dilema + "»\n\n", fuenteCursiva, Color.FromArgb(255, 200, 120));
 
-            Escribir("PARA PROFUNDIZAR", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("PARA PROFUNDIZAR", "GO DEEPER"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
             foreach (string lectura in LorePersonajes.LecturasDe(elemento))
                 Escribir("•  " + lectura + "\n", fuenteSuave, Color.WhiteSmoke);
 
-            Escribir("\nLectura propia del juego a partir de estos autores: consulta las obras originales para citar.",
+            Escribir(Idioma.Texto("\nLectura propia del juego a partir de estos autores: consulta las obras originales para citar.", "\nThe game's own reading based on these authors: consult the original works when citing."),
                      fuenteSuave, Estilo.TextoSuave);
         }
 
@@ -325,33 +332,33 @@ namespace ArenaElemental.Formularios
         {
             Personaje p = seleccionado;
 
-            Escribir("ESTADÍSTICAS", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("ESTADÍSTICAS", "STATISTICS"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
-            Escribir("Vida (HP):  " + p.HpMax + "\nAtaque (ATK):  " + p.Atk + "\nDefensa (DEF):  " + p.Defensa +
-                     "\nEnergía (ENG):  " + p.EnergiaMax + "\nEmpatía:  " + p.Empatia + "\n\n", fuenteNormal, Color.WhiteSmoke);
+            Escribir(Idioma.Texto("Vida (HP):  ", "Health (HP):  ") + p.HpMax + Idioma.Texto("\nAtaque (ATK):  ", "\nAttack (ATK):  ") + p.Atk + Idioma.Texto("\nDefensa (DEF):  ", "\nDefense (DEF):  ") + p.Defensa +
+                     Idioma.Texto("\nEnergía (ENG):  ", "\nEnergy (ENG):  ") + p.EnergiaMax + Idioma.Texto("\nEmpatía:  ", "\nEmpathy:  ") + p.Empatia + "\n\n", fuenteNormal, Color.WhiteSmoke);
 
-            Escribir("TRIÁNGULO ELEMENTAL", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("TRIÁNGULO ELEMENTAL", "ELEMENTAL TRIANGLE"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
             Escribir(Estilo.DescripcionTriangulo(p) + "\n\n", fuenteNormal, Color.WhiteSmoke);
 
-            Escribir("HABILIDADES", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("HABILIDADES", "ABILITIES"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
             EscribirHabilidad(p.HabilidadAtaque);
             EscribirHabilidad(p.HabilidadUtilidad);
 
-            Escribir("ROL", fuenteSeccion, Color.Gold);
+            Escribir(Idioma.Texto("ROL", "ROLE"), fuenteSeccion, Color.Gold);
             Escribir("\n", fuenteSuave, Color.White);
-            Escribir(Estilo.RolDe(p.Elemento) + " de la facción " + p.Elemento + ".", fuenteNormal, Color.WhiteSmoke);
+            Escribir(Estilo.RolDe(p.Elemento) + Idioma.Texto(" de la facción ", " of the faction ") + Idioma.NombreElemento(p.Elemento) + ".", fuenteNormal, Color.WhiteSmoke);
         }
 
         private void EscribirHabilidad(Habilidad h)
         {
             Escribir(h.Tipo + ": " + h.Nombre + "\n", fuenteNegrita, Color.White);
-            Escribir("Cuesta " + h.Costo + " de energía y tiene " + h.Cooldown + " turnos de recarga.\n", fuenteSuave, Estilo.TextoSuave);
+            Escribir(Idioma.Texto("Cuesta ", "Costs ") + h.Costo + Idioma.Texto(" de energía y tiene ", " energy and has a ") + h.Cooldown + Idioma.Texto(" turnos de recarga.\n", " turn cooldown.\n"), fuenteSuave, Estilo.TextoSuave);
             Escribir(h.Descripcion + "\n\n", fuenteNormal, Color.WhiteSmoke);
         }
 
-        /// <summary>Agrega un fragmento de texto al final del cuadro, con su fuente y su color.</summary>
+        // Agrega un fragmento de texto al final del cuadro, con su fuente y su color.
         private void Escribir(string fragmento, Font fuente, Color color)
         {
             texto.SelectionStart = texto.TextLength;

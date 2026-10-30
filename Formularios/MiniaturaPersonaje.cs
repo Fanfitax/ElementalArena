@@ -6,12 +6,10 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Ficha pequeña de un personaje para la galería de la pantalla de selección:
-    /// su imagen, el nombre y sus estadísticas principales. Se puede seleccionar (borde dorado)
-    /// y marcar como "EN EQUIPO" con su posición en la cola de relevos.
-    /// Para saber cuándo la eligen se usan los eventos Click (la selecciona) y DoubleClick (la agrega).
-    /// </summary>
+    // Ficha pequeña de un personaje para la galería de la pantalla de selección:
+    // su imagen, el nombre y sus estadísticas principales. Se puede seleccionar (borde dorado)
+    // y marcar como "EN EQUIPO" con su posición en la cola de relevos.
+    // Para saber cuándo la eligen se usan los eventos Click (la selecciona) y DoubleClick (la agrega).
     public class MiniaturaPersonaje : UserControl
     {
         private Personaje personaje;
@@ -25,12 +23,12 @@ namespace ArenaElemental.Formularios
         {
             this.personaje = personaje;
             DoubleBuffered = true;
-            Size = new Size(140, 150);
+            Size = new Size(140, 158);
             BackColor = Estilo.FondoDe(personaje.Elemento);
             Cursor = Cursors.Hand;
 
             pbArte = new PictureBox();
-            pbArte.SetBounds(4, 4, 132, 92);
+            pbArte.SetBounds(4, 4, 132, 104);
             pbArte.BackColor = Estilo.ColorDe(personaje.Elemento);
             try
             {
@@ -42,15 +40,15 @@ namespace ArenaElemental.Formularios
             }
             Controls.Add(pbArte);
 
-            lblNombre = Estilo.CrearEtiqueta(personaje.Nombre, 6, 98, 128, 20, 10f, true);
+            lblNombre = Estilo.CrearEtiqueta(personaje.Nombre, 6, 108, 128, 20, 10f, true);
             Controls.Add(lblNombre);
 
             lblDatos = Estilo.CrearEtiqueta("HP " + personaje.HpMax + " · ATK " + personaje.Atk + " · DEF " + personaje.Defensa,
-                                            6, 118, 130, 16, 8f, false);
+                                            6, 127, 130, 16, 8f, false);
             lblDatos.ForeColor = Estilo.TextoSuave;
             Controls.Add(lblDatos);
 
-            lblEstado = Estilo.CrearEtiqueta(string.Empty, 6, 132, 128, 15, 7.5f, true);
+            lblEstado = Estilo.CrearEtiqueta(string.Empty, 6, 143, 128, 14, 7.5f, true);
             Controls.Add(lblEstado);
 
             // Los controles de adentro tapan a la ficha: se reenvían sus clics para que la ficha los reciba.
@@ -80,7 +78,7 @@ namespace ArenaElemental.Formularios
             OnDoubleClick(EventArgs.Empty);
         }
 
-        /// <summary>True si es el personaje que se está viendo en la vista previa (borde dorado).</summary>
+        // True si es el personaje que se está viendo en la vista previa (borde dorado).
         public bool Seleccionada
         {
             get { return seleccionada; }
@@ -92,7 +90,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Lugar que ocupa en el equipo (1, 2 o 3) o 0 si no está en el equipo.</summary>
+        // Lugar que ocupa en el equipo (1, 2 o 3) o 0 si no está en el equipo.
         public int PosicionEquipo
         {
             get { return posicionEquipo; }
@@ -109,7 +107,10 @@ namespace ArenaElemental.Formularios
         {
             if (posicionEquipo > 0)
             {
-                lblEstado.Text = posicionEquipo == 1 ? "EN EQUIPO · INICIA" : "EN EQUIPO · " + posicionEquipo + ".º EN COLA";
+                if (posicionEquipo == 1)
+                    lblEstado.Text = Idioma.Texto("EN EQUIPO · INICIA", "IN TEAM · STARTS");
+                else
+                    lblEstado.Text = Idioma.Texto("EN EQUIPO · ", "IN TEAM · ") + posicionEquipo + Idioma.Texto(".º EN COLA", ". IN QUEUE");
                 lblEstado.ForeColor = Color.Gold;
             }
             else

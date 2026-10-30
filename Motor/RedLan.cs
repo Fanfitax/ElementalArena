@@ -7,25 +7,23 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Motor
 {
-    /// <summary>
-    /// Conecta dos PCs de la misma red (LAN) con sockets de .NET:
-    ///  - El ANFITRIÓN usa un TcpListener: abre un puerto y espera.
-    ///  - El INVITADO usa un TcpClient: se conecta a la IP y al puerto del anfitrión.
-    ///
-    /// Los mensajes son líneas de texto (cada una termina en un salto de línea). Para no usar hilos,
-    /// los formularios le preguntan a esta clase cada cierto tiempo con un Timer
-    /// ("¿ya se conectó alguien?", "¿llegó algo?"). Ninguna de esas preguntas se queda esperando:
-    /// si no hay nada devuelven false o null.
-    ///
-    /// Mensajes que se envían:
-    ///   CONFIG|nombreEquipo|id,id,id|escenario|semilla   el anfitrión anuncia su equipo, el escenario y la semilla
-    ///   CONFIG|nombreEquipo|id,id,id                     el invitado anuncia su equipo
-    ///   ACCION|tipo|numeroHabilidad|indice               una jugada del combate
-    ///   RENDIRSE                                         el jugador abandona
-    ///
-    /// Los dos PCs crean el mismo combate (mismos equipos, escenario y semilla) y se pasan las jugadas,
-    /// así que los dos combates siempre quedan iguales.
-    /// </summary>
+    // Conecta dos PCs de la misma red (LAN) con sockets de .NET:
+    //  - El ANFITRIÓN usa un TcpListener: abre un puerto y espera.
+    //  - El INVITADO usa un TcpClient: se conecta a la IP y al puerto del anfitrión.
+    //
+    // Los mensajes son líneas de texto (cada una termina en un salto de línea). Para no usar hilos,
+    // los formularios le preguntan a esta clase cada cierto tiempo con un Timer
+    // ("¿ya se conectó alguien?", "¿llegó algo?"). Ninguna de esas preguntas se queda esperando:
+    // si no hay nada devuelven false o null.
+    //
+    // Mensajes que se envían:
+    //   CONFIG|nombreEquipo|id,id,id|escenario|semilla   el anfitrión anuncia su equipo, el escenario y la semilla
+    //   CONFIG|nombreEquipo|id,id,id                     el invitado anuncia su equipo
+    //   ACCION|tipo|numeroHabilidad|indice               una jugada del combate
+    //   RENDIRSE                                         el jugador abandona
+    //
+    // Los dos PCs crean el mismo combate (mismos equipos, escenario y semilla) y se pasan las jugadas,
+    // así que los dos combates siempre quedan iguales.
     public class RedLan
     {
         public const int PuertoPorDefecto = 8888;
@@ -39,10 +37,10 @@ namespace ArenaElemental.Motor
 
         public bool EsAnfitrion { get; private set; }
 
-        /// <summary>El último error, en texto, para mostrárselo al usuario.</summary>
+        // El último error, en texto, para mostrárselo al usuario.
         public string UltimoError { get; private set; }
 
-        /// <summary>True si se perdió o se cerró la conexión.</summary>
+        // True si se perdió o se cerró la conexión.
         public bool Desconectado
         {
             get { return desconectado; }
@@ -50,7 +48,7 @@ namespace ArenaElemental.Motor
 
         // ---------- Anfitrión ----------
 
-        /// <summary>Abre el puerto y empieza a esperar. Devuelve false si no se pudo (por ejemplo, puerto ocupado).</summary>
+        // Abre el puerto y empieza a esperar. Devuelve false si no se pudo (por ejemplo, puerto ocupado).
         public bool IniciarAnfitrion(int puerto)
         {
             try
@@ -62,13 +60,13 @@ namespace ArenaElemental.Motor
             }
             catch (Exception ex)
             {
-                UltimoError = "No se pudo abrir el puerto " + puerto + ": " + ex.Message;
+                UltimoError = Idioma.Texto("No se pudo abrir el puerto ", "Could not open port ") + puerto + ": " + ex.Message;
                 Cerrar();
                 return false;
             }
         }
 
-        /// <summary>Devuelve true cuando otro PC ya se conectó (en ese momento acepta la conexión).</summary>
+        // Devuelve true cuando otro PC ya se conectó (en ese momento acepta la conexión).
         public bool HayClienteEsperando()
         {
             if (escuchador == null) return false;
@@ -84,20 +82,20 @@ namespace ArenaElemental.Motor
             }
             catch (Exception ex)
             {
-                UltimoError = "Falló la conexión entrante: " + ex.Message;
+                UltimoError = Idioma.Texto("Falló la conexión entrante: ", "Incoming connection failed: ") + ex.Message;
                 return false;
             }
         }
 
         // ---------- Invitado ----------
 
-        /// <summary>Empieza a conectarse al anfitrión. Devuelve false si la IP está mal escrita.</summary>
+        // Empieza a conectarse al anfitrión. Devuelve false si la IP está mal escrita.
         public bool IniciarConexion(string ip, int puerto)
         {
             IPAddress direccion;
             if (!IPAddress.TryParse(ip.Trim(), out direccion))
             {
-                UltimoError = "La dirección IP \"" + ip + "\" no es válida (ejemplo: 192.168.1.20).";
+                UltimoError = Idioma.Texto("La dirección IP \"", "The IP address \"") + ip + Idioma.Texto("\" no es válida (ejemplo: 192.168.1.20).", "\" is not valid (example: 192.168.1.20).");
                 return false;
             }
 
@@ -110,16 +108,14 @@ namespace ArenaElemental.Motor
             }
             catch (Exception ex)
             {
-                UltimoError = "No se pudo iniciar la conexión: " + ex.Message;
+                UltimoError = Idioma.Texto("No se pudo iniciar la conexión: ", "Could not start the connection: ") + ex.Message;
                 Cerrar();
                 return false;
             }
         }
 
-        /// <summary>
-        /// El Timer del formulario la llama mientras el invitado se conecta.
-        /// Devuelve true cuando ya quedó conectado. Si falló, Desconectado queda en true.
-        /// </summary>
+        // El Timer del formulario la llama mientras el invitado se conecta.
+        // Devuelve true cuando ya quedó conectado. Si falló, Desconectado queda en true.
         public bool ConexionTerminada()
         {
             if (conexionEnCurso == null) return false;
@@ -134,7 +130,7 @@ namespace ArenaElemental.Motor
             }
             catch (Exception ex)
             {
-                UltimoError = "No se pudo conectar con el anfitrión: " + ex.Message;
+                UltimoError = Idioma.Texto("No se pudo conectar con el anfitrión: ", "Could not connect to the host: ") + ex.Message;
                 desconectado = true;
                 conexionEnCurso = null;
                 return false;
@@ -143,7 +139,7 @@ namespace ArenaElemental.Motor
 
         // ---------- Enviar y recibir ----------
 
-        /// <summary>Envía una línea de texto al otro PC.</summary>
+        // Envía una línea de texto al otro PC.
         public void EnviarTexto(string linea)
         {
             if (flujo == null || desconectado) return;
@@ -159,10 +155,8 @@ namespace ArenaElemental.Motor
             }
         }
 
-        /// <summary>
-        /// Devuelve la siguiente línea que llegó, o null si todavía no llegó una completa (no espera).
-        /// Si el otro PC cerró la conexión, Desconectado pasa a true.
-        /// </summary>
+        // Devuelve la siguiente línea que llegó, o null si todavía no llegó una completa (no espera).
+        // Si el otro PC cerró la conexión, Desconectado pasa a true.
         public string LeerTexto()
         {
             if (flujo == null) return null;
@@ -204,7 +198,7 @@ namespace ArenaElemental.Motor
             return null;
         }
 
-        /// <summary>Cierra la conexión (se puede llamar varias veces).</summary>
+        // Cierra la conexión (se puede llamar varias veces).
         public void Cerrar()
         {
             try
@@ -225,7 +219,7 @@ namespace ArenaElemental.Motor
 
         // ---------- Mensajes del combate ----------
 
-        /// <summary>Envía la jugada al otro PC.</summary>
+        // Envía la jugada al otro PC.
         public void EnviarAccion(AccionCombate accion)
         {
             EnviarTexto("ACCION|" + accion.Tipo + "|" + accion.NumeroHabilidad + "|" + accion.Indice);
@@ -236,7 +230,7 @@ namespace ArenaElemental.Motor
             EnviarTexto("RENDIRSE");
         }
 
-        /// <summary>Convierte un mensaje "ACCION|..." en una jugada. Devuelve null si el texto no sirve.</summary>
+        // Convierte un mensaje "ACCION|..." en una jugada. Devuelve null si el texto no sirve.
         public static AccionCombate TextoAAccion(string mensaje)
         {
             string[] partes = mensaje.Split('|');
@@ -248,20 +242,20 @@ namespace ArenaElemental.Motor
             if (!int.TryParse(partes[3], out indice)) return null;
 
             string tipo = partes[1];
-            if (tipo == "Atacar") return AccionCombate.Atacar();
-            if (tipo == "Relevo") return AccionCombate.Relevar();
-            if (tipo == "Pasar") return AccionCombate.Pasar();
+            if (tipo == "Atacar") return new AccionCombate(TipoAccion.Atacar);
+            if (tipo == "Relevo") return new AccionCombate(TipoAccion.Relevo);
+            if (tipo == "Pasar") return new AccionCombate(TipoAccion.Pasar);
 
             if (tipo == "Habilidad")
             {
                 if (numero < 0 || numero >= Personaje.CantidadHabilidades) return null;
-                if (indice >= 0) return AccionCombate.HabilidadSobreAliado(numero, indice);
-                return AccionCombate.Habilidad(numero);
+                if (indice >= 0) return new AccionCombate(TipoAccion.Habilidad, numero, indice);
+                return new AccionCombate(TipoAccion.Habilidad, numero);
             }
             return null;
         }
 
-        /// <summary>Las direcciones IPv4 de este PC, para decirle al otro jugador a cuál conectarse.</summary>
+        // Las direcciones IPv4 de este PC, para decirle al otro jugador a cuál conectarse.
         public static List<string> DireccionesLocales()
         {
             List<string> direcciones = new List<string>();

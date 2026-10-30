@@ -1,9 +1,7 @@
 namespace ArenaElemental.Modelos
 {
-    /// <summary>
-    /// Facciones elementales del juego.
-    /// Triángulo (ventaja): Agua > Fuego > Aire > Tierra > Agua.
-    /// </summary>
+    // Facciones elementales del juego.
+    // Triángulo (ventaja): Agua > Fuego > Aire > Tierra > Agua.
     public enum Elemento
     {
         Fuego,

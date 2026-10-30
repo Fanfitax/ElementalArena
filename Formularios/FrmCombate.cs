@@ -9,22 +9,20 @@ using ArenaElemental.Motor;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Pantalla de combate dibujada como una mesa de duelo:
-    ///  - Fondo: la imagen del escenario elegido (volcan, lago, canon o cumbre). Si no existe, un color liso.
-    ///  - Centro: la carta del jugador frente a la del rival, con los botones de acción entre las dos.
-    ///  - A los lados: la banca de cada equipo como una "mano" de cartas en línea (FlowLayoutPanel horizontal).
-    ///    Es la COLA de relevos: la primera carta (con borde dorado) es la que entraría en el próximo relevo
-    ///    y siempre es la más cercana a la carta que está en el campo.
-    ///  - A la derecha: el registro de combate, que es la PILA del historial en un ListBox.
-    ///  - Efectos: números flotantes de daño/curación sobre las cartas, sonidos, temblor y banner del Terremoto.
-    ///
-    /// El formulario sirve para dos modos:
-    ///  - Contra la CPU: el rival juega con IaRival.
-    ///  - Partida LAN: el rival es otra persona en otro PC. Cada jugada propia se envía por la red (RedLan) y las
-    ///    jugadas del otro llegan por la misma conexión. En los dos PCs el Combate es el mismo (el anfitrión es el
-    ///    "Jugador" y el invitado el "Rival"); por eso aquí se usan "local" (mi equipo) y "remoto" (el otro).
-    /// </summary>
+    // Pantalla de combate dibujada como una mesa de duelo:
+    //  - Fondo: la imagen del escenario elegido (volcan, lago, canon o cumbre). Si no existe, un color liso.
+    //  - Centro: la carta del jugador frente a la del rival, con los botones de acción entre las dos.
+    //  - A los lados: la banca de cada equipo como una "mano" de cartas en línea (FlowLayoutPanel horizontal).
+    //    Es la COLA de relevos: la primera carta (con borde dorado) es la que entraría en el próximo relevo
+    //    y siempre es la más cercana a la carta que está en el campo.
+    //  - A la derecha: el registro de combate, que es la PILA del historial en un ListBox.
+    //  - Efectos: números flotantes de daño/curación sobre las cartas, sonidos, temblor y banner del Terremoto.
+    //
+    // El formulario sirve para dos modos:
+    //  - Contra la CPU: el rival juega con IaRival.
+    //  - Partida LAN: el rival es otra persona en otro PC. Cada jugada propia se envía por la red (RedLan) y las
+    //    jugadas del otro llegan por la misma conexión. En los dos PCs el Combate es el mismo (el anfitrión es el
+    //    "Jugador" y el invitado el "Rival"); por eso aquí se usan "local" (mi equipo) y "remoto" (el otro).
     public class FrmCombate : FormularioModerno
     {
         private const int RetardoCpuMs = 900;
@@ -40,7 +38,7 @@ namespace ArenaElemental.Formularios
         private const int XCartaJugador = 222;
         private const int XCentro = 470;
         private const int AnchoCentro = 180;
-        private const int XCartaRival = 698;
+        private const int XCartaRival = 682;
         private const int XBancaRival = 908;
         private const int AnchoBanca = 198;
 
@@ -106,7 +104,7 @@ namespace ArenaElemental.Formularios
         private bool muerteSubitaAnunciada;
         private AvisoEvento aviso;
 
-        /// <summary>Un número que sube sobre una carta y desaparece (daño en rojo, curación en verde, Terremoto en naranja).</summary>
+        // Un número que sube sobre una carta y desaparece (daño en rojo, curación en verde, Terremoto en naranja).
         private class TextoFlotante
         {
             public Label Etiqueta;
@@ -115,16 +113,14 @@ namespace ArenaElemental.Formularios
             public int Edad;     // pasos que lleva visible
         }
 
-        /// <summary>Combate contra la CPU.</summary>
+        // Combate contra la CPU.
         public FrmCombate(string nombreJugador, Combate combate)
             : this(nombreJugador, combate, null, true)
         {
         }
 
-        /// <summary>
-        /// Combate contra la CPU (red = null) o partida LAN (red = la conexión ya establecida).
-        /// "soyAnfitrion" indica si mi equipo es el Jugador del combate (true) o el Rival (false).
-        /// </summary>
+        // Combate contra la CPU (red = null) o partida LAN (red = la conexión ya establecida).
+        // "soyAnfitrion" indica si mi equipo es el Jugador del combate (true) o el Rival (false).
         public FrmCombate(string nombreJugador, Combate combate, RedLan red, bool soyAnfitrion)
         {
             this.nombreJugador = nombreJugador;
@@ -177,7 +173,7 @@ namespace ArenaElemental.Formularios
             get { return red != null; }
         }
 
-        /// <summary>True si la partida sigue y le toca jugar a MI equipo.</summary>
+        // True si la partida sigue y le toca jugar a MI equipo.
         private bool EsMiTurno
         {
             get { return !combate.Terminado && combate.EquipoEnTurno == local; }
@@ -185,19 +181,27 @@ namespace ArenaElemental.Formularios
 
         private int DanoTerremotoLocal
         {
-            get { return soyAnfitrion ? combate.DanoTerremotoJugador : combate.DanoTerremotoRival; }
+            get
+            {
+                if (soyAnfitrion) return combate.DanoTerremotoJugador;
+                return combate.DanoTerremotoRival;
+            }
         }
 
         private int DanoTerremotoRemoto
         {
-            get { return soyAnfitrion ? combate.DanoTerremotoRival : combate.DanoTerremotoJugador; }
+            get
+            {
+                if (soyAnfitrion) return combate.DanoTerremotoRival;
+                return combate.DanoTerremotoJugador;
+            }
         }
 
         // ---------- Construcción de la interfaz (todo por código) ----------
 
         private void ConstruirInterfaz()
         {
-            Estilo.AplicarFormulario(this, "Arena Elemental - Combate", AnchoVentana, AltoVentana);
+            Estilo.AplicarFormulario(this, Idioma.Texto("Arena Elemental - Combate", "Arena Elemental - Battle"), AnchoVentana, AltoVentana);
             BackColor = Color.FromArgb(12, 18, 28);
             CargarFondoDelEscenario();
 
@@ -208,11 +212,9 @@ namespace ArenaElemental.Formularios
 
         // ---------- Fondo según el escenario ----------
 
-        /// <summary>
-        /// Pone como fondo la imagen que corresponde al elemento del escenario elegido:
-        /// Fuego = volcan.jpg, Agua = lago.jpg, Tierra = canon.jpg, Aire = cumbre.jpg.
-        /// Si la imagen no existe o está dañada se usa un color liso del tema del elemento.
-        /// </summary>
+        // Pone como fondo la imagen que corresponde al elemento del escenario elegido:
+        // Fuego = volcan.jpg, Agua = lago.jpg, Tierra = canon.jpg, Aire = cumbre.jpg.
+        // Si la imagen no existe o está dañada se usa un color liso del tema del elemento.
         private void CargarFondoDelEscenario()
         {
             Elemento elemento = combate.Escenario.ElementoAfin;
@@ -246,10 +248,8 @@ namespace ArenaElemental.Formularios
             return Color.FromArgb(28, 52, 70);   // Aire
         }
 
-        /// <summary>
-        /// Recorta la imagen por el centro para que tenga la misma forma que el tablero (sin deformarla) y la
-        /// oscurece un poco para que se lean bien los textos que van encima.
-        /// </summary>
+        // Recorta la imagen por el centro para que tenga la misma forma que el tablero (sin deformarla) y la
+        // oscurece un poco para que se lean bien los textos que van encima.
         private Bitmap AjustarAlTablero(Image original, int ancho, int alto)
         {
             double escala = Math.Max((double)ancho / original.Width, (double)alto / original.Height);
@@ -270,7 +270,7 @@ namespace ArenaElemental.Formularios
             return tablero;
         }
 
-        /// <summary>Franja oscura de arriba con el escenario, la ronda, el recordatorio del triángulo y los botones Reglas y Rendirse.</summary>
+        // Franja oscura de arriba con el escenario, la ronda, el recordatorio del triángulo y los botones Reglas y Rendirse.
         private void ConstruirBarraSuperior()
         {
             Panel barra = new Panel();
@@ -282,31 +282,31 @@ namespace ArenaElemental.Formularios
             lblTitulo.ForeColor = Color.Gold;
             barra.Controls.Add(lblTitulo);
 
-            Label lblTriangulo = Estilo.CrearEtiqueta("Triángulo: " + Estilo.Triangulo, 440, 2, 470, 32, 9f, false);
+            Label lblTriangulo = Estilo.CrearEtiqueta(Idioma.Texto("Triángulo: ", "Triangle: ") + Estilo.Triangulo, 440, 2, 470, 32, 9f, false);
             lblTriangulo.TextAlign = ContentAlignment.MiddleRight;
             barra.Controls.Add(lblTriangulo);
 
             btnReglas = new Button();
             btnReglas.SetBounds(AnchoVentana - 14 - 90 - 8 - 84, 5, 84, 26);
-            Estilo.EstilizarBoton(btnReglas, "Reglas", Color.FromArgb(60, 70, 110));
+            Estilo.EstilizarBoton(btnReglas, Idioma.Texto("Reglas", "Rules"), Color.FromArgb(60, 70, 110));
             btnReglas.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             btnReglas.Click += BtnReglas_Click;
             barra.Controls.Add(btnReglas);
 
             btnRendirse = new Button();
             btnRendirse.SetBounds(AnchoVentana - 14 - 90, 5, 90, 26);
-            Estilo.EstilizarBoton(btnRendirse, "Rendirse", Color.FromArgb(130, 30, 40));
+            Estilo.EstilizarBoton(btnRendirse, Idioma.Texto("Rendirse", "Give up"), Color.FromArgb(130, 30, 40));
             btnRendirse.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
             btnRendirse.Click += BtnRendirse_Click;
             barra.Controls.Add(btnRendirse);
         }
 
-        /// <summary>Las dos cartas del campo, las dos bancas y la zona central con los botones.</summary>
+        // Las dos cartas del campo, las dos bancas y la zona central con los botones.
         private void ConstruirCampoDeDuelo()
         {
             // Nombres de los equipos sobre sus cartas.
-            lblEquipoJugador = CrearTitulo(string.Empty, XCartaJugador, 200);
-            lblEquipoRival = CrearTitulo(string.Empty, XCartaRival, 200);
+            lblEquipoJugador = CrearTitulo(string.Empty, XCartaJugador, 216);
+            lblEquipoRival = CrearTitulo(string.Empty, XCartaRival, 216);
 
             cartaJugador = new VistaCarta(TamanoCarta.Mediana);
             cartaJugador.Location = new Point(XCartaJugador, YCampo);
@@ -362,24 +362,22 @@ namespace ArenaElemental.Formularios
             Controls.Add(vs);
         }
 
-        /// <summary>
-        /// El historial (pila) con estilo de registro de combate. Es un panel pequeño y translúcido
-        /// debajo de la banca del jugador; el resto de esa zona queda libre para que se vea el escenario.
-        /// </summary>
+        // El historial (pila) con estilo de registro de combate. Es un panel pequeño y translúcido
+        // debajo de la banca del jugador; el resto de esa zona queda libre para que se vea el escenario.
         private void ConstruirPanelRegistro()
         {
             Panel panel = new Panel();
-            panel.SetBounds(XBancaJugador, 276, AnchoBanca, 262);
+            panel.SetBounds(XBancaJugador, 296, AnchoBanca, 244);
             panel.BackColor = PanelBancaTranslucido;
             Controls.Add(panel);
             Estilo.Redondear(panel, 12);
 
-            Label titulo = Estilo.CrearEtiqueta("REGISTRO (pila)", 10, 6, AnchoBanca - 20, 20, 9f, true);
+            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("REGISTRO (pila)", "LOG (stack)"), 10, 6, AnchoBanca - 20, 20, 9f, true);
             titulo.ForeColor = Color.Gold;
             panel.Controls.Add(titulo);
 
             lstHistorial = new ListBox();
-            lstHistorial.SetBounds(8, 30, AnchoBanca - 16, 156);
+            lstHistorial.SetBounds(8, 30, AnchoBanca - 16, 136);
             lstHistorial.BackColor = Color.FromArgb(6, 6, 9);
             lstHistorial.ForeColor = Color.White;
             lstHistorial.BorderStyle = BorderStyle.None;
@@ -390,11 +388,11 @@ namespace ArenaElemental.Formularios
             lstHistorial.DrawItem += Historial_DrawItem;
             panel.Controls.Add(lstHistorial);
 
-            Label ultima = Estilo.CrearEtiqueta("Última jugada (Peek):", 10, 192, AnchoBanca - 20, 18, 8f, true);
+            Label ultima = Estilo.CrearEtiqueta(Idioma.Texto("Última jugada (Peek):", "Last move (Peek):"), 10, 172, AnchoBanca - 20, 18, 8f, true);
             ultima.ForeColor = Color.Gold;
             panel.Controls.Add(ultima);
 
-            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 10, 210, AnchoBanca - 20, 48, 8f, false);
+            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 10, 190, AnchoBanca - 20, 48, 8f, false);
             lblUltimaJugada.ForeColor = Color.White;
             panel.Controls.Add(lblUltimaJugada);
         }
@@ -409,14 +407,12 @@ namespace ArenaElemental.Formularios
             return l;
         }
 
-        /// <summary>
-        /// Crea la "mano" de la banca: un FlowLayoutPanel translúcido con las cartas pequeñas en una sola fila.
-        /// El orden de las cartas es el de la cola; la dirección del flujo decide de qué lado empieza la fila.
-        /// </summary>
+        // Crea la "mano" de la banca: un FlowLayoutPanel translúcido con las cartas pequeñas en una sola fila.
+        // El orden de las cartas es el de la cola; la dirección del flujo decide de qué lado empieza la fila.
         private void CrearBanca(int x, VistaCarta[] cartas, FlowDirection direccion)
         {
             FlowLayoutPanel flujo = new FlowLayoutPanel();
-            flujo.SetBounds(x, YCampo, AnchoBanca, 190);
+            flujo.SetBounds(x, YCampo, AnchoBanca, 210);
             flujo.FlowDirection = direccion;
             flujo.WrapContents = false;
             flujo.AutoScroll = false;
@@ -428,7 +424,7 @@ namespace ArenaElemental.Formularios
 
             for (int i = 0; i < cartas.Length; i++)
             {
-                cartas[i] = new VistaCarta(true);
+                cartas[i] = new VistaCarta(TamanoCarta.Pequena);
                 cartas[i].Margin = new Padding(2);
                 flujo.Controls.Add(cartas[i]);
             }
@@ -444,30 +440,30 @@ namespace ArenaElemental.Formularios
             return b;
         }
 
-        /// <summary>El resumen de las reglas que antes ocupaba dos paneles fijos: ahora aparece solo cuando se pide.</summary>
+        // El resumen de las reglas que antes ocupaba dos paneles fijos: ahora aparece solo cuando se pide.
         private void BtnReglas_Click(object sender, EventArgs e)
         {
             string texto =
-                "COLA DE RELEVOS (Queue)\n" +
-                "Entra primero la carta con borde dorado, la más cercana a tu carta en el campo. " +
-                "Quien sale del campo se forma al final de la cola. " +
-                "No se puede relevar dos turnos seguidos. Si cae tu personaje, entra el siguiente gratis.\n\n" +
-                "TERREMOTO\n" +
-                "Cada ronda hay " + Combate.ProbabilidadTerremoto + "% de probabilidad. Daño = Min(f'(t), " +
-                Combate.LimiteTerremotoPct + "% de la vida máxima), con f(t) = 2t² + 5t y f'(t) = 4t + 5 (t = ronda). " +
-                "Nunca baja de 1 HP.\n\n" +
-                "MUERTE SÚBITA\n" +
-                "Pasada la ronda " + Combate.TurnoMuerteSubita + ", el ataque de todos crece " +
-                (int)Math.Round(Combate.IncrementoMuerteSubita * 100) + "% en cada ronda.\n\n" +
-                "TRIÁNGULO ELEMENTAL\n" + Estilo.Triangulo + " (ventaja x1.5, desventaja x0.5).";
-            MessageBox.Show(texto, "Reglas del combate", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Idioma.Texto("COLA DE RELEVOS (Queue)\n", "SWAP QUEUE (Queue)\n") +
+                Idioma.Texto("Entra primero la carta con borde dorado, la más cercana a tu carta en el campo. ", "The card with the golden border enters first, the one closest to your card on the field. ") +
+                Idioma.Texto("Quien sale del campo se forma al final de la cola. ", "Whoever leaves the field goes to the end of the queue. ") +
+                Idioma.Texto("No se puede relevar dos turnos seguidos. Si cae tu personaje, entra el siguiente gratis.\n\n", "You cannot swap two turns in a row. If your character falls, the next one enters for free.\n\n") +
+                Idioma.Texto("TERREMOTO\n", "EARTHQUAKE\n") +
+                Idioma.Texto("Cada ronda hay ", "Every round there is a ") + Combate.ProbabilidadTerremoto + Idioma.Texto("% de probabilidad. Daño = Min(f'(t), ", "% chance. Damage = Min(f'(t), ") +
+                Combate.LimiteTerremotoPct + Idioma.Texto("% de la vida máxima), con f(t) = 2t² + 5t y f'(t) = 4t + 5 (t = ronda). ", "% of max HP), with f(t) = 2t² + 5t and f'(t) = 4t + 5 (t = round). ") +
+                Idioma.Texto("Nunca baja de 1 HP.\n\n", "It never drops below 1 HP.\n\n") +
+                Idioma.Texto("MUERTE SÚBITA\n", "SUDDEN DEATH\n") +
+                Idioma.Texto("Pasada la ronda ", "After round ") + Combate.TurnoMuerteSubita + Idioma.Texto(", el ataque de todos crece ", ", everyone's attack grows by ") +
+                (int)Math.Round(Combate.IncrementoMuerteSubita * 100) + Idioma.Texto("% en cada ronda.\n\n", "% each round.\n\n") +
+                Idioma.Texto("TRIÁNGULO ELEMENTAL\n", "ELEMENTAL TRIANGLE\n") + Estilo.Triangulo + Idioma.Texto(" (ventaja x1.5, desventaja x0.5).", " (advantage x1.5, disadvantage x0.5).");
+            MessageBox.Show(texto, Idioma.Texto("Reglas del combate", "Battle rules"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // ---------- Eventos de los botones ----------
 
         private void BtnAtacar_Click(object sender, EventArgs e)
         {
-            EjecutarJugador(AccionCombate.Atacar());
+            EjecutarJugador(new AccionCombate(TipoAccion.Atacar));
         }
 
         private void BtnHabAtaque_Click(object sender, EventArgs e)
@@ -482,12 +478,12 @@ namespace ArenaElemental.Formularios
 
         private void BtnRelevo_Click(object sender, EventArgs e)
         {
-            EjecutarJugador(AccionCombate.Relevar());
+            EjecutarJugador(new AccionCombate(TipoAccion.Relevo));
         }
 
         private void BtnPasar_Click(object sender, EventArgs e)
         {
-            EjecutarJugador(AccionCombate.Pasar());
+            EjecutarJugador(new AccionCombate(TipoAccion.Pasar));
         }
 
         private void BtnRendirse_Click(object sender, EventArgs e)
@@ -495,24 +491,24 @@ namespace ArenaElemental.Formularios
             Close();
         }
 
-        /// <summary>Se eligió a qué aliado curar en el menú. El número del aliado está guardado en el Tag del elemento.</summary>
+        // Se eligió a qué aliado curar en el menú. El número del aliado está guardado en el Tag del elemento.
         private void ItemAliado_Click(object sender, EventArgs e)
         {
             ToolStripMenuItem item = (ToolStripMenuItem)sender;
             int indiceAliado = (int)item.Tag;
-            EjecutarJugador(AccionCombate.HabilidadSobreAliado(numeroHabilidadPendiente, indiceAliado));
+            EjecutarJugador(new AccionCombate(TipoAccion.Habilidad, numeroHabilidadPendiente, indiceAliado));
         }
 
         // ---------- Acciones del jugador ----------
 
-        /// <summary>Usa la habilidad 0 (ataque) o 1 (utilidad). Si cura a un aliado, primero se elige a cuál.</summary>
+        // Usa la habilidad 0 (ataque) o 1 (utilidad). Si cura a un aliado, primero se elige a cuál.
         private void UsarHabilidadDelJugador(int numero)
         {
             Personaje activo = local.Activo;
             Habilidad habilidad = activo.ObtenerHabilidad(numero);
             if (!habilidad.RequiereAliado)
             {
-                EjecutarJugador(AccionCombate.Habilidad(numero));
+                EjecutarJugador(new AccionCombate(TipoAccion.Habilidad, numero));
                 return;
             }
 
@@ -524,8 +520,8 @@ namespace ArenaElemental.Formularios
                 if (!aliado.EstaVivo) continue;
 
                 string texto;
-                if (aliado == activo) texto = "Curarse a sí mismo";
-                else texto = "Curar a " + aliado.Nombre;
+                if (aliado == activo) texto = Idioma.Texto("Curarse a sí mismo", "Heal yourself");
+                else texto = Idioma.Texto("Curar a ", "Heal ") + aliado.Nombre;
                 texto += "  (" + aliado.Hp + "/" + aliado.HpMax + ")";
 
                 ToolStripMenuItem item = new ToolStripMenuItem(texto);
@@ -541,21 +537,23 @@ namespace ArenaElemental.Formularios
 
         private void EjecutarJugador(AccionCombate accion)
         {
-            string motivo = "No es tu turno.";
-            if (!EsMiTurno || !combate.PuedeEjecutar(accion, out motivo))
+            if (!EsMiTurno)
             {
-                MessageBox.Show(motivo, "Acción no disponible", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(Idioma.Texto("No es tu turno.", "It is not your turn."), Idioma.Texto("Acción no disponible", "Action not available"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (!combate.PuedeEjecutar(accion))
+            {
+                MessageBox.Show(combate.ObtenerMotivo(accion), Idioma.Texto("Acción no disponible", "Action not available"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             AplicarAccion(accion);
             ProcesarSiguiente();
         }
 
-        /// <summary>
-        /// Ejecuta la acción (mía, de la CPU o del otro jugador en LAN) en el motor y la presenta: suena el efecto,
-        /// suben los números de daño o curación sobre las cartas y se actualiza toda la pantalla.
-        /// Si la jugada es mía y es una partida LAN, también se envía al otro PC.
-        /// </summary>
+        // Ejecuta la acción (mía, de la CPU o del otro jugador en LAN) en el motor y la presenta: suena el efecto,
+        // suben los números de daño o curación sobre las cartas y se actualiza toda la pantalla.
+        // Si la jugada es mía y es una partida LAN, también se envía al otro PC.
         private void AplicarAccion(AccionCombate accion)
         {
             bool esMia = (combate.EquipoEnTurno == local);
@@ -625,7 +623,7 @@ namespace ArenaElemental.Formularios
 
             // Se revisa la conexión al final, para no perder una jugada que llegó justo antes de cerrarse.
             if (red.Desconectado && !combate.Terminado && !partidaGuardada)
-                TerminarPorDesconexion("Se perdió la conexión con el otro jugador.");
+                TerminarPorDesconexion(Idioma.Texto("Se perdió la conexión con el otro jugador.", "The connection with the other player was lost."));
         }
 
         private void ProcesarMensajeDeRed(string mensaje)
@@ -640,10 +638,14 @@ namespace ArenaElemental.Formularios
             if (accion == null) return;   // un mensaje que no es una jugada se ignora
 
             // Una jugada del otro jugador solo vale cuando es SU turno y la acción es válida en este combate.
-            string motivo = "Llegó una jugada fuera de turno.";
-            if (EsMiTurno || !combate.PuedeEjecutar(accion, out motivo))
+            if (EsMiTurno)
             {
-                TerminarPorDesconexion("Las partidas de los dos PCs dejaron de coincidir (" + motivo + ").");
+                TerminarPorDesconexion(Idioma.Texto("Las partidas de los dos PCs dejaron de coincidir (Llegó una jugada fuera de turno.).", "The matches on the two PCs no longer match (A move arrived out of turn.)."));
+                return;
+            }
+            if (!combate.PuedeEjecutar(accion))
+            {
+                TerminarPorDesconexion(Idioma.Texto("Las partidas de los dos PCs dejaron de coincidir (", "The matches on the two PCs no longer match (") + combate.ObtenerMotivo(accion) + ").");
                 return;
             }
 
@@ -655,7 +657,7 @@ namespace ArenaElemental.Formularios
         {
             timerRed.Stop();
             GuardarPartida("Victoria");
-            MessageBox.Show("El otro jugador se rindió. ¡Ganas la partida!", "Fin del combate", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(Idioma.Texto("El otro jugador se rindió. ¡Ganas la partida!", "The other player gave up. You win the match!"), Idioma.Texto("Fin del combate", "End of battle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             DialogResult = DialogResult.OK;
             Close();
         }
@@ -664,7 +666,7 @@ namespace ArenaElemental.Formularios
         {
             timerRed.Stop();
             GuardarPartida("Abandono");
-            MessageBox.Show(texto, "Conexión perdida", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(texto, Idioma.Texto("Conexión perdida", "Connection lost"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             DialogResult = DialogResult.Cancel;
             Close();
         }
@@ -682,11 +684,11 @@ namespace ArenaElemental.Formularios
             GuardarPartida(resultado);
 
             if (gane)
-                MessageBox.Show("¡Victoria! Derrotaste al rival en " + combate.Turno + " rondas.",
-                                "Fin del combate", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(Idioma.Texto("¡Victoria! Derrotaste al rival en ", "Victory! You defeated the rival in ") + combate.Turno + Idioma.Texto(" rondas.", " rounds."),
+                                Idioma.Texto("Fin del combate", "End of battle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             else
-                MessageBox.Show("Derrota. Tu equipo cayó en la ronda " + combate.Turno + ".",
-                                "Fin del combate", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                MessageBox.Show(Idioma.Texto("Derrota. Tu equipo cayó en la ronda ", "Defeat. Your team fell in round ") + combate.Turno + ".",
+                                Idioma.Texto("Fin del combate", "End of battle"), MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             DialogResult = DialogResult.OK;
             Close();
         }
@@ -703,8 +705,8 @@ namespace ArenaElemental.Formularios
         {
             if (!combate.Terminado && !partidaGuardada)
             {
-                DialogResult r = MessageBox.Show("¿Abandonar el combate? Se registrará como abandono.",
-                                                 "Rendirse", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                DialogResult r = MessageBox.Show(Idioma.Texto("¿Abandonar el combate? Se registrará como abandono.", "Forfeit the battle? It will be recorded as a forfeit."),
+                                                 Idioma.Texto("Rendirse", "Give up"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (r != DialogResult.Yes)
                 {
                     e.Cancel = true;
@@ -744,57 +746,56 @@ namespace ArenaElemental.Formularios
         private void Refrescar()
         {
             // Las cartas grandes siempre muestran al personaje ACTIVO de cada equipo.
-            cartaJugador.ActualizarDatos(local.Activo, "EN CAMPO", true);
-            cartaRival.ActualizarDatos(remoto.Activo, "EN CAMPO", true);
+            cartaJugador.ActualizarDatos(local.Activo, Idioma.Texto("EN CAMPO", "ON FIELD"), true);
+            cartaRival.ActualizarDatos(remoto.Activo, Idioma.Texto("EN CAMPO", "ON FIELD"), true);
 
             // Las cartas pequeñas muestran la COLA (Queue) de cada banca, en orden.
-            ActualizarBanca(local, bancaJugador, lblBancaJugador, "MI BANCA");
-            ActualizarBanca(remoto, bancaRival, lblBancaRival, "BANCA RIVAL");
+            ActualizarBanca(local, bancaJugador, lblBancaJugador, Idioma.Texto("MI BANCA", "MY BENCH"));
+            ActualizarBanca(remoto, bancaRival, lblBancaRival, Idioma.Texto("BANCA RIVAL", "RIVAL BENCH"));
 
             // Nombre de cada equipo con la cantidad de personajes caídos.
-            lblEquipoJugador.Text = local.Nombre.ToUpper() + "  ·  Caídos: " + (local.Miembros.Count - local.Vivos);
-            lblEquipoRival.Text = remoto.Nombre.ToUpper() + "  ·  Caídos: " + (remoto.Miembros.Count - remoto.Vivos);
+            lblEquipoJugador.Text = local.Nombre.ToUpper() + Idioma.Texto("  ·  Caídos: ", "  ·  Fallen: ") + (local.Miembros.Count - local.Vivos);
+            lblEquipoRival.Text = remoto.Nombre.ToUpper() + Idioma.Texto("  ·  Caídos: ", "  ·  Fallen: ") + (remoto.Miembros.Count - remoto.Vivos);
 
             bool turnoJugador = EsMiTurno;
             Personaje activo = local.Activo;
-            string motivo;
 
-            lblTitulo.Text = combate.Escenario.Nombre + "   ·   Ronda " + combate.Turno;
+            lblTitulo.Text = combate.Escenario.Nombre + Idioma.Texto("   ·   Ronda ", "   ·   Round ") + combate.Turno;
             if (EsPartidaLan) lblTitulo.Text += "   ·   LAN";
 
             if (combate.Terminado)
             {
-                lblTurno.Text = "FIN";
+                lblTurno.Text = Idioma.Texto("FIN", "END");
                 lblTurno.ForeColor = Color.White;
-                lblInstruccion.Text = "El combate terminó.";
+                lblInstruccion.Text = Idioma.Texto("El combate terminó.", "The battle is over.");
             }
             else if (turnoJugador)
             {
-                lblTurno.Text = "TU TURNO";
+                lblTurno.Text = Idioma.Texto("TU TURNO", "YOUR TURN");
                 lblTurno.ForeColor = Color.Gold;
-                lblInstruccion.Text = "Juega " + activo.Nombre + ". Elige una acción.";
+                lblInstruccion.Text = Idioma.Texto("Juega ", "Playing: ") + activo.Nombre + Idioma.Texto(". Elige una acción.", ". Choose an action.");
             }
             else
             {
-                lblTurno.Text = "TURNO RIVAL";
+                lblTurno.Text = Idioma.Texto("TURNO RIVAL", "RIVAL'S TURN");
                 lblTurno.ForeColor = Color.IndianRed;
-                if (EsPartidaLan) lblInstruccion.Text = "Esperando la jugada de " + remoto.Nombre + "...";
-                else lblInstruccion.Text = remoto.Activo.Nombre + " está pensando...";
+                if (EsPartidaLan) lblInstruccion.Text = Idioma.Texto("Esperando la jugada de ", "Waiting for the move of ") + remoto.Nombre + "...";
+                else lblInstruccion.Text = remoto.Activo.Nombre + Idioma.Texto(" está pensando...", " is thinking...");
             }
             lblInstruccion.ForeColor = Color.White;
 
-            btnAtacar.Text = "Atacar\nataque básico";
+            btnAtacar.Text = Idioma.Texto("Atacar\nataque básico", "Attack\nbasic attack");
             btnAtacar.Enabled = turnoJugador;
-            btnPasar.Text = "Pasar\n+" + Combate.EnergiaAlDescansar + " ENG";
+            btnPasar.Text = Idioma.Texto("Pasar\n+", "Pass\n+") + Combate.EnergiaAlDescansar + " ENG";
             btnPasar.Enabled = turnoJugador;
 
             ActualizarBotonHabilidad(btnHabAtaque, activo, 0, turnoJugador);
             ActualizarBotonHabilidad(btnHabUtilidad, activo, 1, turnoJugador);
 
             Personaje siguiente = local.ProximoRelevo;
-            if (siguiente == null) btnRelevo.Text = "Relevo\nbanca vacía";
-            else btnRelevo.Text = "Relevo\nentra " + siguiente.Nombre;
-            btnRelevo.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Relevar(), out motivo);
+            if (siguiente == null) btnRelevo.Text = Idioma.Texto("Relevo\nbanca vacía", "Swap\nbench empty");
+            else btnRelevo.Text = Idioma.Texto("Relevo\nentra ", "Swap\nenters ") + siguiente.Nombre;
+            btnRelevo.Enabled = turnoJugador && combate.PuedeEjecutar(new AccionCombate(TipoAccion.Relevo));
 
             btnRendirse.Enabled = !combate.Terminado;
 
@@ -802,36 +803,36 @@ namespace ArenaElemental.Formularios
             LlenarHistorial();
         }
 
-        /// <summary>Pone en el botón el nombre de la habilidad y su costo (o la recarga), y la activa solo si se puede usar.</summary>
+        // Pone en el botón el nombre de la habilidad y su costo (o la recarga), y la activa solo si se puede usar.
         private void ActualizarBotonHabilidad(Button boton, Personaje activo, int numero, bool turnoJugador)
         {
             Habilidad h = activo.ObtenerHabilidad(numero);
             string detalle;
             if (h.CooldownActual > 0)
             {
-                string turnos = "turnos";
-                if (h.CooldownActual == 1) turnos = "turno";
-                detalle = "recarga " + h.CooldownActual + " " + turnos;
+                string turnos = Idioma.Texto("turnos", "turns");
+                if (h.CooldownActual == 1) turnos = Idioma.Texto("turno", "turn");
+                detalle = Idioma.Texto("recarga ", "cooldown ") + h.CooldownActual + " " + turnos;
             }
             else
             {
                 detalle = h.Tipo + " · " + h.Costo + " ENG";
             }
             boton.Text = h.Nombre + "\n" + detalle;
-            boton.Enabled = turnoJugador && combate.PuedeEjecutar(AccionCombate.Habilidad(numero), out detalle);
+            boton.Enabled = turnoJugador && combate.PuedeEjecutar(new AccionCombate(TipoAccion.Habilidad, numero));
             ayuda.SetToolTip(boton, h.Descripcion);
         }
 
-        /// <summary>Muestra en las cartas pequeñas lo que hay en la cola: la primera es la que entra en el próximo relevo.</summary>
+        // Muestra en las cartas pequeñas lo que hay en la cola: la primera es la que entra en el próximo relevo.
         private void ActualizarBanca(EquipoCombate equipo, VistaCarta[] cartas, Label titulo, string nombre)
         {
-            Personaje[] cola = equipo.ObtenerBanca();
+            List<Personaje> cola = equipo.ObtenerBanca();
             for (int i = 0; i < cartas.Length; i++)
             {
-                if (i < cola.Length)
+                if (i < cola.Count)
                 {
-                    string estado = (i + 1) + ".º EN COLA";
-                    if (i == 0) estado = "SIGUE EN ENTRAR";
+                    string estado = (i + 1) + Idioma.Texto(".º EN COLA", ". IN QUEUE");
+                    if (i == 0) estado = Idioma.Texto("SIGUE EN ENTRAR", "NEXT IN");
                     cartas[i].EsSiguiente = (i == 0);
                     cartas[i].ActualizarDatos(cola[i], estado, false);
                     cartas[i].Visible = true;
@@ -844,7 +845,7 @@ namespace ArenaElemental.Formularios
             titulo.Text = nombre;
         }
 
-        /// <summary>Estado del Terremoto: la probabilidad por ronda y, si ocurrió en esta ronda, se programa el aviso y el temblor.</summary>
+        // Estado del Terremoto: la probabilidad por ronda y, si ocurrió en esta ronda, se programa el aviso y el temblor.
         private void ActualizarAvisoTerremoto()
         {
             if (combate.Terminado)
@@ -855,20 +856,20 @@ namespace ArenaElemental.Formularios
             lblTerremoto.Visible = true;
             if (combate.TerremotoEstaRonda)
             {
-                lblTerremoto.Text = "¡TERREMOTO esta ronda!";
+                lblTerremoto.Text = Idioma.Texto("¡TERREMOTO esta ronda!", "EARTHQUAKE this round!");
                 lblTerremoto.ForeColor = Color.Orange;
                 if (combate.Turno != ultimaRondaConTemblor)
                 {
                     ultimaRondaConTemblor = combate.Turno;
                     int t = combate.Turno;
-                    ProgramarEvento(true, "¡TERREMOTO!",
-                        "Ronda t = " + t + ":  f'(t) = 4t + 5 = " + Combate.DerivadaTerremoto(t) +
-                        "  (tope: " + Combate.LimiteTerremotoPct + "% de la vida máxima)");
+                    ProgramarEvento(true, Idioma.Texto("¡TERREMOTO!", "EARTHQUAKE!"),
+                        Idioma.Texto("Ronda t = ", "Round t = ") + t + ":  f'(t) = 4t + 5 = " + Combate.DerivadaTerremoto(t) +
+                        Idioma.Texto("  (tope: ", "  (cap: ") + Combate.LimiteTerremotoPct + Idioma.Texto("% de la vida máxima)", "% of max HP)"));
                 }
             }
             else
             {
-                lblTerremoto.Text = "Terremoto: " + Combate.ProbabilidadTerremoto + "% por ronda";
+                lblTerremoto.Text = Idioma.Texto("Terremoto: ", "Earthquake: ") + Combate.ProbabilidadTerremoto + Idioma.Texto("% por ronda", "% per round");
                 lblTerremoto.ForeColor = Color.White;
             }
 
@@ -876,17 +877,15 @@ namespace ArenaElemental.Formularios
             if (!muerteSubitaAnunciada && combate.Turno > Combate.TurnoMuerteSubita)
             {
                 muerteSubitaAnunciada = true;
-                ProgramarEvento(false, "¡MUERTE SÚBITA!",
-                    "El ataque de todos aumenta " + (int)Math.Round(Combate.IncrementoMuerteSubita * 100) + "% en cada ronda");
+                ProgramarEvento(false, Idioma.Texto("¡MUERTE SÚBITA!", "SUDDEN DEATH!"),
+                    Idioma.Texto("El ataque de todos aumenta ", "Everyone's attack increases by ") + (int)Math.Round(Combate.IncrementoMuerteSubita * 100) + Idioma.Texto("% en cada ronda", "% each round"));
             }
         }
 
         // ---------- Anuncio de eventos (Terremoto y Muerte Súbita) ----------
 
-        /// <summary>
-        /// Deja el evento listo para mostrarse medio segundo después de la jugada. Así el sonido y el golpe
-        /// del ataque se alcanzan a ver y a oír antes de que el banner y el temblor los tapen.
-        /// </summary>
+        // Deja el evento listo para mostrarse medio segundo después de la jugada. Así el sonido y el golpe
+        // del ataque se alcanzan a ver y a oír antes de que el banner y el temblor los tapen.
         private void ProgramarEvento(bool conTemblor, string titulo, string detalle)
         {
             temblorPendiente = conTemblor;
@@ -925,7 +924,7 @@ namespace ArenaElemental.Formularios
             temblorPendiente = false;
         }
 
-        /// <summary>Muestra el banner translúcido en el centro del tablero (sobre la zona de los botones y las cartas).</summary>
+        // Muestra el banner translúcido en el centro del tablero (sobre la zona de los botones y las cartas).
         private void MostrarAviso(string titulo, string detalle)
         {
             if (!Visible) return;
@@ -944,10 +943,8 @@ namespace ArenaElemental.Formularios
 
         // ---------- Textos flotantes de daño y curación ----------
 
-        /// <summary>
-        /// Compara la vida del personaje antes y después de la jugada y hace subir el número sobre su carta:
-        /// rojo si perdió vida, verde si ganó. El daño del Terremoto sale aparte, en naranja y un poco después.
-        /// </summary>
+        // Compara la vida del personaje antes y después de la jugada y hace subir el número sobre su carta:
+        // rojo si perdió vida, verde si ganó. El daño del Terremoto sale aparte, en naranja y un poco después.
         private void MostrarCambioDeVida(VistaCarta carta, Personaje antes, int hpAntes, Personaje ahora, int danoTerremoto)
         {
             int cambio = CambioDeVida(antes, hpAntes, ahora, danoTerremoto);
@@ -979,7 +976,7 @@ namespace ArenaElemental.Formularios
                 {
                     // Cayó el personaje: estalla en partículas del color de su elemento.
                     efectos.Estallido(centro, Estilo.ColorDe(antes.Elemento), 50);
-                    CrearTextoFlotante(carta, "¡DERROTADO!", Color.FromArgb(255, 90, 90), Color.FromArgb(34, 10, 10), 6, fuenteAviso, 150, 70);
+                    CrearTextoFlotante(carta, Idioma.Texto("¡DERROTADO!", "DEFEATED!"), Color.FromArgb(255, 90, 90), Color.FromArgb(34, 10, 10), 6, fuenteAviso, 150, 70);
                 }
                 else
                 {
@@ -993,10 +990,8 @@ namespace ArenaElemental.Formularios
                 CrearTextoFlotante(carta, "-" + danoTerremoto, Color.FromArgb(255, 170, 40), Color.FromArgb(38, 24, 6), EsperaTerremoto);
         }
 
-        /// <summary>
-        /// Cuánta vida cambió (negativo = daño, positivo = curación) sin contar el Terremoto, que se muestra aparte.
-        /// Si sigue siendo el mismo personaje, su HP ya incluye el golpe del Terremoto: se separa.
-        /// </summary>
+        // Cuánta vida cambió (negativo = daño, positivo = curación) sin contar el Terremoto, que se muestra aparte.
+        // Si sigue siendo el mismo personaje, su HP ya incluye el golpe del Terremoto: se separa.
         private int CambioDeVida(Personaje antes, int hpAntes, Personaje ahora, int danoTerremoto)
         {
             int cambio = antes.Hp - hpAntes;
@@ -1004,7 +999,7 @@ namespace ArenaElemental.Formularios
             return cambio;
         }
 
-        /// <summary>Si la jugada fue un ataque que hizo daño, muestra "¡SUPEREFICAZ!" o "POCO EFICAZ" sobre el que lo recibió.</summary>
+        // Si la jugada fue un ataque que hizo daño, muestra Idioma.Texto("¡SUPEREFICAZ!", "SUPER EFFECTIVE!") o "POCO EFICAZ" sobre el que lo recibió.
         private void MostrarEficacia(AccionCombate accion, Personaje atacante, Personaje defensor, int cambioDelDefensor, VistaCarta cartaDefensor)
         {
             if (cambioDelDefensor >= 0) return;
@@ -1015,9 +1010,9 @@ namespace ArenaElemental.Formularios
 
             double multiplicador = atacante.ObtenerMultiplicador(defensor.Elemento);
             if (multiplicador > Personaje.MultiplicadorNeutro)
-                CrearTextoFlotante(cartaDefensor, "¡SUPEREFICAZ!", Color.Gold, Color.FromArgb(40, 30, 6), 4, fuenteAviso, 150, 70);
+                CrearTextoFlotante(cartaDefensor, Idioma.Texto("¡SUPEREFICAZ!", "SUPER EFFECTIVE!"), Color.Gold, Color.FromArgb(40, 30, 6), 4, fuenteAviso, 150, 70);
             else if (multiplicador < Personaje.MultiplicadorNeutro)
-                CrearTextoFlotante(cartaDefensor, "poco eficaz", Color.FromArgb(170, 190, 220), Color.FromArgb(16, 20, 32), 4, fuenteAviso, 150, 70);
+                CrearTextoFlotante(cartaDefensor, Idioma.Texto("poco eficaz", "not very effective"), Color.FromArgb(170, 190, 220), Color.FromArgb(16, 20, 32), 4, fuenteAviso, 150, 70);
         }
 
         private void CrearTextoFlotante(VistaCarta carta, string texto, Color colorTexto, Color colorFondo, int espera)
@@ -1025,10 +1020,11 @@ namespace ArenaElemental.Formularios
             CrearTextoFlotante(carta, texto, colorTexto, colorFondo, espera, fuenteFlotante, 88, 130);
         }
 
-        /// <summary>Crea una etiqueta que sube sobre la carta: "y" es la altura (desde la parte de arriba de la carta) donde empieza.</summary>
+        // Crea una etiqueta que sube sobre la carta: "y" es la altura (desde la parte de arriba de la carta) donde empieza.
         private void CrearTextoFlotante(VistaCarta carta, string texto, Color colorTexto, Color colorFondo, int espera, Font fuente, int ancho, int y)
         {
-            int alto = (fuente == fuenteFlotante) ? 40 : 28;
+            int alto = 28;
+            if (fuente == fuenteFlotante) alto = 40;
 
             Label etiqueta = new Label();
             etiqueta.Text = texto;
@@ -1049,7 +1045,7 @@ namespace ArenaElemental.Formularios
             timerFlotantes.Start();
         }
 
-        /// <summary>Cada 30 ms: hace subir los números (rápido al principio y más lento al final) y retira los que ya terminaron.</summary>
+        // Cada 30 ms: hace subir los números (rápido al principio y más lento al final) y retira los que ya terminaron.
         private void TimerFlotantes_Tick(object sender, EventArgs e)
         {
             for (int i = flotantes.Count - 1; i >= 0; i--)
@@ -1085,13 +1081,13 @@ namespace ArenaElemental.Formularios
 
         // ---------- Efecto de temblor ----------
 
-        /// <summary>Terremoto: temblor fuerte y largo.</summary>
+        // Terremoto: temblor fuerte y largo.
         private void IniciarTemblor()
         {
             IniciarTemblor(8, 12);
         }
 
-        /// <summary>La ventana se mueve de lado a lado "amplitud" píxeles durante "pasos" cambios de 40 ms.</summary>
+        // La ventana se mueve de lado a lado "amplitud" píxeles durante "pasos" cambios de 40 ms.
         private void IniciarTemblor(int amplitud, int pasos)
         {
             if (timerTemblor.Enabled) return;
@@ -1118,7 +1114,7 @@ namespace ArenaElemental.Formularios
 
         // ---------- Registro de combate (la PILA en un ListBox) ----------
 
-        /// <summary>Copia la pila del historial al ListBox. Al recorrer un Stack sale primero lo más reciente.</summary>
+        // Copia la pila del historial al ListBox. Al recorrer un Stack sale primero lo más reciente.
         private void LlenarHistorial()
         {
             lstHistorial.BeginUpdate();
@@ -1153,10 +1149,10 @@ namespace ArenaElemental.Formularios
         private Color ColorDeLinea(string texto)
         {
             if (texto.StartsWith("—")) return Color.Gold;
-            if (texto.Contains("TERREMOTO") || texto.StartsWith("   ")) return Color.Orange;
-            if (texto.Contains("derrotado") || texto.Contains("Has sido")) return Color.IndianRed;
-            if (texto.Contains("Victoria") || texto.Contains("MUERTE")) return Color.Gold;
-            if (texto.Contains("cura")) return Color.LightGreen;
+            if (texto.Contains("TERREMOTO") || texto.Contains("EARTHQUAKE") || texto.StartsWith("   ")) return Color.Orange;
+            if (texto.Contains("derrotado") || texto.Contains("Has sido") || texto.Contains("defeated")) return Color.IndianRed;
+            if (texto.Contains("Victoria") || texto.Contains("MUERTE") || texto.Contains("Victory") || texto.Contains("SUDDEN")) return Color.Gold;
+            if (texto.Contains("cura") || texto.Contains("heals")) return Color.LightGreen;
             return Color.White;
         }
     }

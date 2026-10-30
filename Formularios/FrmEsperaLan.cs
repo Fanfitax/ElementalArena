@@ -1,15 +1,14 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using ArenaElemental.Modelos;
 using ArenaElemental.Motor;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Ventanita de espera: queda esperando el mensaje CONFIG del otro jugador (su equipo, y el escenario si es el anfitrión).
-    /// Se cierra con DialogResult.OK cuando el mensaje llega (queda en la propiedad Mensaje) o con Cancel si
-    /// se cancela o el otro PC se desconecta.
-    /// </summary>
+    // Ventanita de espera: queda esperando el mensaje CONFIG del otro jugador (su equipo, y el escenario si es el anfitrión).
+    // Se cierra con DialogResult.OK cuando el mensaje llega (queda en la propiedad Mensaje) o con Cancel si
+    // se cancela o el otro PC se desconecta.
     public class FrmEsperaLan : FormularioModerno
     {
         private RedLan red;
@@ -20,10 +19,10 @@ namespace ArenaElemental.Formularios
         {
             this.red = red;
 
-            Estilo.AplicarFormulario(this, "Arena Elemental - Esperando al otro jugador", 560, 210);
+            Estilo.AplicarFormulario(this, Idioma.Texto("Arena Elemental - Esperando al otro jugador", "Arena Elemental - Waiting for the other player"), 560, 210);
             ControlBox = false;
 
-            Label titulo = Estilo.CrearEtiqueta("ESPERANDO AL OTRO JUGADOR", 24, 18, 500, 34, 16f, true);
+            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("ESPERANDO AL OTRO JUGADOR", "WAITING FOR THE OTHER PLAYER"), 24, 18, 500, 34, 16f, true);
             titulo.ForeColor = Color.Gold;
             Controls.Add(titulo);
 
@@ -33,7 +32,7 @@ namespace ArenaElemental.Formularios
 
             Button cancelar = new Button();
             cancelar.SetBounds(404, 146, 130, 38);
-            Estilo.EstilizarBoton(cancelar, "Cancelar", Estilo.PanelClaro);
+            Estilo.EstilizarBoton(cancelar, Idioma.Texto("Cancelar", "Cancel"), Estilo.PanelClaro);
             cancelar.Click += Cancelar_Click;
             Controls.Add(cancelar);
 
@@ -43,7 +42,7 @@ namespace ArenaElemental.Formularios
             timer.Start();
         }
 
-        /// <summary>La línea CONFIG recibida del otro jugador.</summary>
+        // La línea CONFIG recibida del otro jugador.
         public string Mensaje
         {
             get { return mensaje; }
@@ -68,7 +67,7 @@ namespace ArenaElemental.Formularios
             if (red.Desconectado)
             {
                 timer.Stop();
-                MessageBox.Show("El otro jugador se desconectó.", "Conexión perdida", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(Idioma.Texto("El otro jugador se desconectó.", "The other player disconnected."), Idioma.Texto("Conexión perdida", "Connection lost"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.Cancel;
                 Close();
             }

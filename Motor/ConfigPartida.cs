@@ -5,13 +5,11 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Motor
 {
-    /// <summary>
-    /// Lo que cada jugador le anuncia al otro antes de empezar una partida LAN:
-    /// el nombre de su equipo y sus 3 personajes (como posiciones de la lista de CatalogoBase).
-    /// El anfitrión además envía el escenario y la semilla del azar.
-    ///
-    /// Se manda como una línea de texto:  CONFIG|nombre|1,4,7|escenario|semilla
-    /// </summary>
+    // Lo que cada jugador le anuncia al otro antes de empezar una partida LAN:
+    // el nombre de su equipo y sus 3 personajes (como posiciones de la lista de CatalogoBase).
+    // El anfitrión además envía el escenario y la semilla del azar.
+    //
+    // Se manda como una línea de texto:  CONFIG|nombre|1,4,7|escenario|semilla
     public class ConfigPartida
     {
         public string NombreEquipo;
@@ -19,7 +17,7 @@ namespace ArenaElemental.Motor
         public int IndiceEscenario = -1;   // solo viene del anfitrión (-1 = no viene)
         public int Semilla;                // solo viene del anfitrión
 
-        /// <summary>Convierte la configuración en el texto que se envía por la red.</summary>
+        // Convierte la configuración en el texto que se envía por la red.
         public string ATexto()
         {
             // Las posiciones de los personajes, separadas por comas.
@@ -39,10 +37,8 @@ namespace ArenaElemental.Motor
             return texto;
         }
 
-        /// <summary>
-        /// Convierte el texto recibido en una configuración. Devuelve null si el texto está mal armado,
-        /// si hay personajes que no existen o repetidos.
-        /// </summary>
+        // Convierte el texto recibido en una configuración. Devuelve null si el texto está mal armado,
+        // si hay personajes que no existen o repetidos.
         public static ConfigPartida DeTexto(string mensaje)
         {
             string[] partes = mensaje.Split('|');

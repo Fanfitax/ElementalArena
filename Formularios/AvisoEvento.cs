@@ -5,12 +5,10 @@ using System.Windows.Forms;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Banner grande que anuncia un evento del combate (TERREMOTO, MUERTE SÚBITA) sobre el tablero.
-    /// Es una ventana sin borde con Opacity: así el fondo es de verdad translúcido y deja ver las cartas y
-    /// los botones que quedan debajo (un Label con fondo semitransparente no puede hacerlo).
-    /// Aparece suavemente, se queda un par de segundos y se cierra sola. Un clic lo cierra antes.
-    /// </summary>
+    // Banner grande que anuncia un evento del combate (TERREMOTO, MUERTE SÚBITA) sobre el tablero.
+    // Es una ventana sin borde con Opacity: así el fondo es de verdad translúcido y deja ver las cartas y
+    // los botones que quedan debajo (un Label con fondo semitransparente no puede hacerlo).
+    // Aparece suavemente, se queda un par de segundos y se cierra sola. Un clic lo cierra antes.
     public class AvisoEvento : Form
     {
         private const double OpacidadMaxima = 0.88;
@@ -47,7 +45,7 @@ namespace ArenaElemental.Formularios
             Close();
         }
 
-        /// <summary>Se muestra sin quitarle el foco a la ventana del combate.</summary>
+        // Se muestra sin quitarle el foco a la ventana del combate.
         protected override bool ShowWithoutActivation
         {
             get { return true; }

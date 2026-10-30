@@ -7,12 +7,10 @@ using ArenaElemental.Motor;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>
-    /// Pantalla para armar el equipo de 3 personajes y elegir el escenario.
-    ///  - Izquierda: la galería con los 12 personajes (una columna por elemento). Clic = ver la carta, doble clic = agregar.
-    ///  - Centro: la carta grande del personaje seleccionado.
-    ///  - Derecha: las 3 casillas del equipo. El orden importa: el 1.º sale al campo y los otros esperan en la COLA de relevos.
-    /// </summary>
+    // Pantalla para armar el equipo de 3 personajes y elegir el escenario.
+    //  - Izquierda: la galería con los 12 personajes (una columna por elemento). Clic = ver la carta, doble clic = agregar.
+    //  - Centro: la carta grande del personaje seleccionado.
+    //  - Derecha: las 3 casillas del equipo. El orden importa: el 1.º sale al campo y los otros esperan en la COLA de relevos.
     public class FrmSeleccionEquipo : FormularioModerno
     {
         private static Color PanelOscuro = Color.FromArgb(205, 10, 12, 18);
@@ -39,7 +37,7 @@ namespace ArenaElemental.Formularios
         private Button[] casillaBajar = new Button[EquipoCombate.TamanoEquipo];
         private Button[] casillaQuitar = new Button[EquipoCombate.TamanoEquipo];
 
-        public FrmSeleccionEquipo(IList<Personaje> catalogo, IList<Escenario> escenarios, string nombreJugador)
+        public FrmSeleccionEquipo(List<Personaje> catalogo, List<Escenario> escenarios, string nombreJugador)
         {
             this.catalogo = new List<Personaje>(catalogo);
             this.escenarios = new List<Escenario>(escenarios);
@@ -55,10 +53,8 @@ namespace ArenaElemental.Formularios
         public Escenario EscenarioElegido { get { return escenarios[indiceEscenario]; } }
         public string NombreEquipo { get { return txtNombreEquipo.Text.Trim(); } }
 
-        /// <summary>
-        /// Si es false se oculta la elección de escenario. Se usa en el modo LAN para el jugador que se une:
-        /// el escenario lo elige el anfitrión.
-        /// </summary>
+        // Si es false se oculta la elección de escenario. Se usa en el modo LAN para el jugador que se une:
+        // el escenario lo elige el anfitrión.
         public bool PermitirElegirEscenario
         {
             get { return etEscenario.Visible; }
@@ -70,7 +66,7 @@ namespace ArenaElemental.Formularios
                     b.Visible = value;
                 if (!value)
                 {
-                    lblConsejo.Text = "El escenario lo elige el anfitrión de la partida.";
+                    lblConsejo.Text = Idioma.Texto("El escenario lo elige el anfitrión de la partida.", "The scenario is chosen by the match host.");
                 }
             }
         }
@@ -79,7 +75,7 @@ namespace ArenaElemental.Formularios
 
         private void ConstruirInterfaz(string nombreJugador)
         {
-            Estilo.AplicarFormulario(this, "Arena Elemental - Arma tu equipo", 1260, 660);
+            Estilo.AplicarFormulario(this, Idioma.Texto("Arena Elemental - Arma tu equipo", "Arena Elemental - Build your team"), 1260, 660);
 
             ConstruirEncabezado();
             ConstruirGaleria();
@@ -89,26 +85,26 @@ namespace ArenaElemental.Formularios
 
         private void ConstruirEncabezado()
         {
-            Label titulo = Estilo.CrearEtiqueta("ARMA TU EQUIPO", 20, 8, 600, 36, 22f, true);
+            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("ARMA TU EQUIPO", "BUILD YOUR TEAM"), 20, 8, 600, 36, 22f, true);
             titulo.ForeColor = Color.Gold;
             Controls.Add(titulo);
 
-            Label sub = Estilo.CrearEtiqueta("Elige 3 personajes. El 1.º sale al campo y los otros esperan en la cola de relevos, en el orden que pongas.",
+            Label sub = Estilo.CrearEtiqueta(Idioma.Texto("Elige 3 personajes. El 1.º sale al campo y los otros esperan en la cola de relevos, en el orden que pongas.", "Pick 3 characters. The 1st goes onto the field and the others wait in the swap queue, in the order you set."),
                                              22, 44, 900, 20, 9.5f, false);
             sub.ForeColor = Estilo.TextoSuave;
             Controls.Add(sub);
 
             btnVolver = new Button();
             btnVolver.SetBounds(1130, 14, 110, 32);
-            Estilo.EstilizarBoton(btnVolver, "Volver", Estilo.PanelClaro);
+            Estilo.EstilizarBoton(btnVolver, Idioma.Texto("Volver", "Back"), Estilo.PanelClaro);
             btnVolver.Click += BtnVolver_Click;
             Controls.Add(btnVolver);
         }
 
-        /// <summary>La galería: 4 columnas (Fuego, Agua, Tierra, Aire) con 3 personajes cada una.</summary>
+        // La galería: 4 columnas (Fuego, Agua, Tierra, Aire) con 3 personajes cada una.
         private void ConstruirGaleria()
         {
-            string[] columnas = new string[] { "FUEGO", "AGUA", "TIERRA", "AIRE" };
+            string[] columnas = new string[] { Idioma.Texto("FUEGO", "FIRE"), Idioma.Texto("AGUA", "WATER"), Idioma.Texto("TIERRA", "EARTH"), Idioma.Texto("AIRE", "AIR") };
             Elemento[] elementos = new Elemento[] { Elemento.Fuego, Elemento.Agua, Elemento.Tierra, Elemento.Aire };
             for (int c = 0; c < columnas.Length; c++)
             {
@@ -123,7 +119,7 @@ namespace ArenaElemental.Formularios
                 int columna = i / 3;
                 int fila = i % 3;
                 MiniaturaPersonaje m = new MiniaturaPersonaje(catalogo[i]);
-                m.Location = new Point(20 + columna * 148, 94 + fila * 158);
+                m.Location = new Point(20 + columna * 148, 94 + fila * 162);
                 m.Click += Miniatura_Click;
                 m.DoubleClick += Miniatura_DoubleClick;
                 Controls.Add(m);
@@ -132,43 +128,43 @@ namespace ArenaElemental.Formularios
 
             // Panel con el triángulo y las habilidades del personaje seleccionado.
             Panel panel = new Panel();
-            panel.SetBounds(20, 568, 584, 84);
+            panel.SetBounds(20, 588, 584, 64);
             panel.BackColor = PanelOscuro;
             Controls.Add(panel);
             Estilo.Redondear(panel, 12);
 
-            lblDetalle = Estilo.CrearEtiqueta(string.Empty, 12, 6, 562, 74, 9f, false);
+            lblDetalle = Estilo.CrearEtiqueta(string.Empty, 12, 5, 562, 56, 9f, false);
             panel.Controls.Add(lblDetalle);
         }
 
         private void ConstruirVistaPrevia()
         {
-            vistaPrevia = new VistaCarta(false);
+            vistaPrevia = new VistaCarta(TamanoCarta.Seleccion);
             vistaPrevia.Location = new Point(624, 72);
             Controls.Add(vistaPrevia);
 
             btnAgregar = new Button();
-            btnAgregar.SetBounds(624, 500, 232, 44);
-            Estilo.EstilizarBoton(btnAgregar, "AGREGAR AL EQUIPO", Color.FromArgb(46, 160, 96));
+            btnAgregar.SetBounds(624, 562, 232, 42);
+            Estilo.EstilizarBoton(btnAgregar, Idioma.Texto("AGREGAR AL EQUIPO", "ADD TO TEAM"), Color.FromArgb(46, 160, 96));
             btnAgregar.Click += BtnAgregar_Click;
             Controls.Add(btnAgregar);
 
-            lblConsejo = Estilo.CrearEtiqueta("Un clic en un personaje muestra su carta.\nDoble clic (o el botón) lo agrega a tu equipo.",
-                                              624, 554, 232, 60, 8.5f, false);
+            lblConsejo = Estilo.CrearEtiqueta(Idioma.Texto("Clic: ver la carta\nDoble clic: agregar al equipo", "Click: view the card\nDouble click: add to the team"),
+                                              624, 608, 232, 44, 8.5f, false);
             lblConsejo.ForeColor = Estilo.TextoSuave;
             Controls.Add(lblConsejo);
         }
 
         private void ConstruirPanelEquipo(string nombreJugador)
         {
-            Label titulo = Estilo.CrearEtiqueta("TU EQUIPO", 876, 72, 364, 18, 9.5f, true);
+            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("TU EQUIPO", "YOUR TEAM"), 876, 72, 364, 18, 9.5f, true);
             titulo.ForeColor = Color.Gold;
             Controls.Add(titulo);
 
             for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
                 CrearCasilla(i);
 
-            Label etNombre = Estilo.CrearEtiqueta("NOMBRE DEL EQUIPO", 876, 316, 364, 18, 8.5f, true);
+            Label etNombre = Estilo.CrearEtiqueta(Idioma.Texto("NOMBRE DEL EQUIPO", "TEAM NAME"), 876, 316, 364, 18, 8.5f, true);
             etNombre.ForeColor = Color.Gold;
             Controls.Add(etNombre);
 
@@ -179,11 +175,11 @@ namespace ArenaElemental.Formularios
             txtNombreEquipo.ForeColor = Color.White;
             txtNombreEquipo.BorderStyle = BorderStyle.FixedSingle;
             txtNombreEquipo.MaxLength = 40;
-            txtNombreEquipo.Text = "Equipo de " + nombreJugador;
+            txtNombreEquipo.Text = Idioma.Texto("Equipo de ", "Team of ") + nombreJugador;
             txtNombreEquipo.TextChanged += TxtNombreEquipo_TextChanged;
             Controls.Add(txtNombreEquipo);
 
-            etEscenario = Estilo.CrearEtiqueta("ESCENARIO", 876, 380, 364, 18, 8.5f, true);
+            etEscenario = Estilo.CrearEtiqueta(Idioma.Texto("ESCENARIO", "SCENARIO"), 876, 380, 364, 18, 8.5f, true);
             etEscenario.ForeColor = Color.Gold;
             Controls.Add(etEscenario);
 
@@ -206,13 +202,13 @@ namespace ArenaElemental.Formularios
 
             btnCombatir = new Button();
             btnCombatir.SetBounds(876, 560, 364, 62);
-            Estilo.EstilizarBoton(btnCombatir, "¡A COMBATIR!", Color.FromArgb(46, 160, 96));
+            Estilo.EstilizarBoton(btnCombatir, Idioma.Texto("¡A COMBATIR!", "FIGHT!"), Color.FromArgb(46, 160, 96));
             btnCombatir.Font = new Font("Segoe UI", 15f, FontStyle.Bold);
             btnCombatir.Click += BtnCombatir_Click;
             Controls.Add(btnCombatir);
         }
 
-        /// <summary>Una casilla del equipo: imagen, nombre, su lugar en la cola y los botones para subir, bajar o quitar.</summary>
+        // Una casilla del equipo: imagen, nombre, su lugar en la cola y los botones para subir, bajar o quitar.
         private void CrearCasilla(int i)
         {
             Panel panel = new Panel();
@@ -316,7 +312,7 @@ namespace ArenaElemental.Formularios
 
         // ---------- Selección y equipo ----------
 
-        /// <summary>Muestra la carta del personaje y sus habilidades.</summary>
+        // Muestra la carta del personaje y sus habilidades.
         private void Seleccionar(Personaje p)
         {
             seleccionado = p;
@@ -354,7 +350,7 @@ namespace ArenaElemental.Formularios
             RefrescarEquipo();
         }
 
-        /// <summary>Actualiza las 3 casillas, las marcas de la galería y los botones.</summary>
+        // Actualiza las 3 casillas, las marcas de la galería y los botones.
         private void RefrescarEquipo()
         {
             for (int i = 0; i < EquipoCombate.TamanoEquipo; i++)
@@ -365,18 +361,27 @@ namespace ArenaElemental.Formularios
                     Personaje p = equipo[i];
                     casillaImagen[i].BackColor = Estilo.ColorDe(p.Elemento);
                     casillaImagen[i].Image = ObtenerImagenCasilla(p);
-                    casillaNombre[i].Text = p.Nombre + "  ·  " + p.Elemento;
+                    casillaNombre[i].Text = p.Nombre + "  ·  " + Idioma.NombreElemento(p.Elemento);
                     casillaNombre[i].ForeColor = Color.White;
-                    casillaRol[i].Text = i == 0 ? "1.º  ·  INICIA EN EL CAMPO" : (i + 1) + ".º  ·  EN LA COLA DE RELEVO";
-                    casillaRol[i].ForeColor = i == 0 ? Color.Gold : Estilo.TextoSuave;
+                    if (i == 0)
+                    {
+                        casillaRol[i].Text = Idioma.Texto("1.º  ·  INICIA EN EL CAMPO", "1st  ·  STARTS ON THE FIELD");
+                        casillaRol[i].ForeColor = Color.Gold;
+                    }
+                    else
+                    {
+                        casillaRol[i].Text = (i + 1) + Idioma.Texto(".º  ·  EN LA COLA DE RELEVO", ".  ·  IN THE SWAP QUEUE");
+                        casillaRol[i].ForeColor = Estilo.TextoSuave;
+                    }
                 }
                 else
                 {
                     casillaImagen[i].BackColor = Color.FromArgb(28, 32, 46);
                     casillaImagen[i].Image = null;
-                    casillaNombre[i].Text = "— vacío —";
+                    casillaNombre[i].Text = Idioma.Texto("— vacío —", "— empty —");
                     casillaNombre[i].ForeColor = Estilo.TextoSuave;
-                    casillaRol[i].Text = i == 0 ? "Elige quién inicia el combate" : "Elige otro personaje";
+                    if (i == 0) casillaRol[i].Text = Idioma.Texto("Elige quién inicia el combate", "Pick who starts the battle");
+                    else casillaRol[i].Text = Idioma.Texto("Elige otro personaje", "Pick another character");
                     casillaRol[i].ForeColor = Estilo.TextoSuave;
                 }
                 casillaSubir[i].Visible = ocupada;
@@ -410,22 +415,23 @@ namespace ArenaElemental.Formularios
             bool yaEsta = seleccionado != null && equipo.Contains(seleccionado);
             bool completo = equipo.Count >= EquipoCombate.TamanoEquipo;
             btnAgregar.Enabled = seleccionado != null && !yaEsta && !completo;
-            if (yaEsta) btnAgregar.Text = "YA ESTÁ EN TU EQUIPO";
-            else if (completo) btnAgregar.Text = "EQUIPO COMPLETO";
-            else btnAgregar.Text = "AGREGAR AL EQUIPO";
+            if (yaEsta) btnAgregar.Text = Idioma.Texto("YA ESTÁ EN TU EQUIPO", "ALREADY IN YOUR TEAM");
+            else if (completo) btnAgregar.Text = Idioma.Texto("EQUIPO COMPLETO", "TEAM COMPLETE");
+            else btnAgregar.Text = Idioma.Texto("AGREGAR AL EQUIPO", "ADD TO TEAM");
         }
 
         private void ActualizarBotonCombatir()
         {
             bool listo = equipo.Count == EquipoCombate.TamanoEquipo && NombreEquipo.Length > 0;
             btnCombatir.Enabled = listo;
-            btnCombatir.BackColor = listo ? Color.FromArgb(46, 160, 96) : Estilo.PanelClaro;
+            if (listo) btnCombatir.BackColor = Color.FromArgb(46, 160, 96);
+            else btnCombatir.BackColor = Estilo.PanelClaro;
             if (equipo.Count < EquipoCombate.TamanoEquipo)
-                btnCombatir.Text = "Elige " + (EquipoCombate.TamanoEquipo - equipo.Count) + " personaje(s) más";
+                btnCombatir.Text = Idioma.Texto("Elige ", "Pick ") + (EquipoCombate.TamanoEquipo - equipo.Count) + Idioma.Texto(" personaje(s) más", " more character(s)");
             else if (NombreEquipo.Length == 0)
-                btnCombatir.Text = "Escribe un nombre para el equipo";
+                btnCombatir.Text = Idioma.Texto("Escribe un nombre para el equipo", "Type a name for the team");
             else
-                btnCombatir.Text = "¡A COMBATIR!";
+                btnCombatir.Text = Idioma.Texto("¡A COMBATIR!", "FIGHT!");
         }
 
         // ---------- Escenario ----------
@@ -438,12 +444,13 @@ namespace ArenaElemental.Formularios
             for (int i = 0; i < botonesEscenario.Length; i++)
             {
                 bool elegido = (i == indice);
-                botonesEscenario[i].FlatAppearance.BorderSize = elegido ? 3 : 0;
+                if (elegido) botonesEscenario[i].FlatAppearance.BorderSize = 3;
+                else botonesEscenario[i].FlatAppearance.BorderSize = 0;
                 botonesEscenario[i].FlatAppearance.BorderColor = Color.Gold;
             }
 
             Escenario s = escenarios[indice];
-            lblEscenario.Text = s.Descripcion + "\nBonus: +" + s.BonusAtaquePct + "% de ATK a las cartas de " + s.ElementoAfin + ".";
+            lblEscenario.Text = s.Descripcion + "\nBonus: +" + s.BonusAtaquePct + Idioma.Texto("% de ATK a las cartas de ", "% ATK to the cards of ") + Idioma.NombreElemento(s.ElementoAfin) + ".";
         }
     }
 }

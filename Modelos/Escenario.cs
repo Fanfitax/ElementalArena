@@ -1,27 +1,42 @@
 namespace ArenaElemental.Modelos
 {
-    /// <summary>
-    /// Escenario de combate. Le da un bonus de ataque a los personajes de su elemento afín
-    /// (por ejemplo, el Volcán Ardiente da +10% de ataque a los de Fuego).
-    /// </summary>
+    // Escenario de combate. Le da un bonus de ataque a los personajes de su elemento afín
+    // (por ejemplo, el Volcán Ardiente da +10% de ataque a los de Fuego).
     public class Escenario
     {
-        public Escenario(int id, string nombre, Elemento elementoAfin, int bonusAtaquePct, string descripcion)
+        // El nombre y la descripción se guardan en español y en inglés; las propiedades devuelven el idioma elegido.
+        private string nombre;
+        private string nombreIngles;
+        private string descripcion;
+        private string descripcionIngles;
+
+        public Escenario(int id, string nombre, string nombreIngles, Elemento elementoAfin, int bonusAtaquePct,
+                         string descripcion, string descripcionIngles)
         {
             Id = id;
-            Nombre = nombre;
+            this.nombre = nombre;
+            this.nombreIngles = nombreIngles;
             ElementoAfin = elementoAfin;
             BonusAtaquePct = bonusAtaquePct;
-            Descripcion = descripcion;
+            this.descripcion = descripcion;
+            this.descripcionIngles = descripcionIngles;
         }
 
         public int Id { get; private set; }
-        public string Nombre { get; private set; }
         public Elemento ElementoAfin { get; private set; }
         public int BonusAtaquePct { get; private set; }
-        public string Descripcion { get; private set; }
 
-        /// <summary>Multiplicador de ataque para un elemento: 1.1 si es el afín del escenario y 1.0 si no.</summary>
+        public string Nombre
+        {
+            get { return Idioma.Texto(nombre, nombreIngles); }
+        }
+
+        public string Descripcion
+        {
+            get { return Idioma.Texto(descripcion, descripcionIngles); }
+        }
+
+        // Multiplicador de ataque para un elemento: 1.1 si es el afín del escenario y 1.0 si no.
         public double MultiplicadorPara(Elemento elemento)
         {
             if (elemento == ElementoAfin)
@@ -29,7 +44,7 @@ namespace ArenaElemental.Modelos
             return 1.0;
         }
 
-        /// <summary>Le pone al personaje el multiplicador de este escenario.</summary>
+        // Le pone al personaje el multiplicador de este escenario.
         public void AplicarA(Personaje personaje)
         {
             personaje.MultiplicadorEscenario = MultiplicadorPara(personaje.Elemento);
@@ -37,7 +52,7 @@ namespace ArenaElemental.Modelos
 
         public override string ToString()
         {
-            return Nombre + " (" + ElementoAfin + " +" + BonusAtaquePct + "% ATK)";
+            return Nombre + " (" + Idioma.NombreElemento(ElementoAfin) + " +" + BonusAtaquePct + "% ATK)";
         }
     }
 }

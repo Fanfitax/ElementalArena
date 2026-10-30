@@ -46,6 +46,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Modelos\Elemento.cs" />
+    <Compile Include="Modelos\Idioma.cs" />
     <Compile Include="Modelos\Personaje.cs" />
     <Compile Include="Modelos\Habilidad.cs" />
     <Compile Include="Modelos\CartaFuego.cs" />

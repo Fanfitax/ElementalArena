@@ -8,31 +8,31 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Formularios
 {
-    /// <summary>Colores, textos y fábricas de controles compartidos por todos los formularios.</summary>
+    // Colores, textos y fábricas de controles compartidos por todos los formularios.
     public static class Estilo
     {
-        public static readonly Color Fondo = Color.FromArgb(24, 26, 40);
-        public static readonly Color Panel = Color.FromArgb(38, 41, 62);
-        public static readonly Color PanelClaro = Color.FromArgb(58, 62, 92);
-        public static readonly Color Texto = Color.WhiteSmoke;
-        public static readonly Color TextoSuave = Color.FromArgb(165, 170, 200);
-        public static readonly Color Acento = Color.FromArgb(96, 120, 220);
+        public static Color Fondo = Color.FromArgb(24, 26, 40);
+        public static Color Panel = Color.FromArgb(38, 41, 62);
+        public static Color PanelClaro = Color.FromArgb(58, 62, 92);
+        public static Color Texto = Color.WhiteSmoke;
+        public static Color TextoSuave = Color.FromArgb(165, 170, 200);
+        public static Color Acento = Color.FromArgb(96, 120, 220);
 
-        public const string Triangulo = "Agua > Fuego > Aire > Tierra > Agua";
+        // El triángulo elemental escrito en el idioma elegido.
+        public static string Triangulo
+        {
+            get { return Idioma.Texto("Agua > Fuego > Aire > Tierra > Agua", "Water > Fire > Air > Earth > Water"); }
+        }
 
-        /// <summary>
-        /// Busca el archivo dentro de la carpeta "Imagenes": junto al .exe, en la carpeta actual
-        /// o en la carpeta del proyecto (cuando se ejecuta desde bin\Debug). Devuelve null si no existe.
-        /// </summary>
+        // Busca el archivo dentro de la carpeta "Imagenes": junto al .exe, en la carpeta actual
+        // o en la carpeta del proyecto (cuando se ejecuta desde bin\Debug). Devuelve null si no existe.
         public static string BuscarImagen(string archivo)
         {
             return BuscarEnCarpeta("Imagenes", archivo);
         }
 
-        /// <summary>
-        /// Igual que BuscarImagen pero para cualquier carpeta del juego (por ejemplo "Sonidos").
-        /// Devuelve la ruta completa del archivo o null si no existe.
-        /// </summary>
+        // Igual que BuscarImagen pero para cualquier carpeta del juego (por ejemplo "Sonidos").
+        // Devuelve la ruta completa del archivo o null si no existe.
         public static string BuscarEnCarpeta(string nombreCarpeta, string archivo)
         {
             string[] carpetas = new string[]
@@ -51,10 +51,8 @@ namespace ArenaElemental.Formularios
             return null;
         }
 
-        /// <summary>
-        /// Carga una imagen de la carpeta "Imagenes". Si no existe o está dañada devuelve null
-        /// (el programa nunca se cae por una imagen que falta).
-        /// </summary>
+        // Carga una imagen de la carpeta "Imagenes". Si no existe o está dañada devuelve null
+        // (el programa nunca se cae por una imagen que falta).
         public static Image CargarImagen(string archivo)
         {
             string ruta = BuscarImagen(archivo);
@@ -84,7 +82,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Versión oscura del color del elemento, para fondos de filas.</summary>
+        // Versión oscura del color del elemento, para fondos de filas.
         public static Color FondoDe(Elemento elemento)
         {
             Color c = ColorDe(elemento);
@@ -99,10 +97,8 @@ namespace ArenaElemental.Formularios
             return b;
         }
 
-        /// <summary>
-        /// Botón de diseño plano y moderno: sin borde, color sólido, esquinas redondeadas, letra en negrita
-        /// y un tono más claro al pasar el mouse. Se debe llamar después de darle su tamaño al botón.
-        /// </summary>
+        // Botón de diseño plano y moderno: sin borde, color sólido, esquinas redondeadas, letra en negrita
+        // y un tono más claro al pasar el mouse. Se debe llamar después de darle su tamaño al botón.
         public static void EstilizarBoton(Button b, string texto, Color color)
         {
             b.Text = texto;
@@ -118,7 +114,7 @@ namespace ArenaElemental.Formularios
             Redondear(b, 8);
         }
 
-        /// <summary>Le da esquinas redondeadas a cualquier control recortando su región.</summary>
+        // Le da esquinas redondeadas a cualquier control recortando su región.
         public static void Redondear(Control control, int radio)
         {
             if (control.Width <= 0 || control.Height <= 0) return;
@@ -128,7 +124,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Rectángulo con las esquinas redondeadas (para recortar o dibujar bordes).</summary>
+        // Rectángulo con las esquinas redondeadas (para recortar o dibujar bordes).
         public static GraphicsPath CaminoRedondeado(Rectangle r, int radio)
         {
             int d = radio * 2;
@@ -148,7 +144,9 @@ namespace ArenaElemental.Formularios
             l.SetBounds(x, y, ancho, alto);
             l.ForeColor = Texto;
             l.BackColor = Color.Transparent;
-            l.Font = new Font("Segoe UI", tamano, negrita ? FontStyle.Bold : FontStyle.Regular);
+            FontStyle estilo = FontStyle.Regular;
+            if (negrita) estilo = FontStyle.Bold;
+            l.Font = new Font("Segoe UI", tamano, estilo);
             return l;
         }
 
@@ -164,22 +162,20 @@ namespace ArenaElemental.Formularios
             f.MaximizeBox = false;
         }
 
-        /// <summary>Rol de cada elemento, para mostrar en las cartas y en la galería.</summary>
+        // Rol de cada elemento, para mostrar en las cartas y en la galería.
         public static string RolDe(Elemento elemento)
         {
             switch (elemento)
             {
-                case Elemento.Fuego: return "ATACANTE";
-                case Elemento.Agua: return "APOYO";
-                case Elemento.Tierra: return "TANQUE";
-                default: return "VELOZ";
+                case Elemento.Fuego: return Idioma.Texto("ATACANTE", "ATTACKER");
+                case Elemento.Agua: return Idioma.Texto("APOYO", "SUPPORT");
+                case Elemento.Tierra: return Idioma.Texto("TANQUE", "TANK");
+                default: return Idioma.Texto("VELOZ", "FAST");
             }
         }
 
-        /// <summary>
-        /// Pinta el fondo moderno de las pantallas: degradado azul noche, un resplandor verde azulado,
-        /// una cuadrícula de hexágonos muy suave y los bordes más oscuros (viñeta).
-        /// </summary>
+        // Pinta el fondo moderno de las pantallas: degradado azul noche, un resplandor verde azulado,
+        // una cuadrícula de hexágonos muy suave y los bordes más oscuros (viñeta).
         public static void PintarFondo(Graphics g, Rectangle r)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -209,7 +205,8 @@ namespace ArenaElemental.Formularios
                 {
                     for (int col = -1; col < r.Width / ancho + 2; col++)
                     {
-                        float cx = r.X + col * ancho + (fila % 2 == 0 ? 0 : ancho / 2);
+                        float cx = r.X + col * ancho;
+                        if (fila % 2 != 0) cx = cx + ancho / 2;   // las filas impares van corridas media celda
                         float cy = r.Y + fila * radio * 1.5f;
                         PointF[] puntos = new PointF[6];
                         for (int i = 0; i < 6; i++)
@@ -236,7 +233,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        /// <summary>Da a una tabla el aspecto oscuro del juego (la usan las estadísticas y el ranking).</summary>
+        // Da a una tabla el aspecto oscuro del juego (la usan las estadísticas y el ranking).
         public static void EstilizarTabla(DataGridView dgv)
         {
             dgv.AutoGenerateColumns = false;
@@ -270,7 +267,7 @@ namespace ArenaElemental.Formularios
             dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(16, 20, 30);
         }
 
-        /// <summary>Agrega una columna de texto a la tabla. "peso" es su ancho relativo y "formato" es opcional (fechas, números).</summary>
+        // Agrega una columna de texto a la tabla. "peso" es su ancho relativo y "formato" es opcional (fechas, números).
         public static void AgregarColumna(DataGridView dgv, string propiedad, string titulo, int peso, string formato)
         {
             DataGridViewTextBoxColumn col = new DataGridViewTextBoxColumn();
@@ -282,29 +279,29 @@ namespace ArenaElemental.Formularios
             dgv.Columns.Add(col);
         }
 
-        /// <summary>Una línea con el nombre, el costo y lo que hace una habilidad.</summary>
+        // Una línea con el nombre, el costo y lo que hace una habilidad.
         public static string DescripcionHabilidad(Habilidad h)
         {
-            return h.Tipo + " · " + h.Nombre + " (" + h.Costo + " ENG, recarga " + h.Cooldown + "): " + h.Descripcion;
+            return h.Tipo + " · " + h.Nombre + " (" + h.Costo + Idioma.Texto(" ENG, recarga ", " ENG, cooldown ") + h.Cooldown + "): " + h.Descripcion;
         }
 
-        /// <summary>Texto "Fuerte contra X · Débil contra Y" según el triángulo elemental.</summary>
+        // Texto "Fuerte contra X · Débil contra Y" según el triángulo elemental.
         public static string DescripcionTriangulo(Personaje p)
         {
             string fuerte = string.Empty, debil = string.Empty;
             foreach (Elemento e in Enum.GetValues(typeof(Elemento)))
             {
                 double m = p.ObtenerMultiplicador(e);
-                if (m > Personaje.MultiplicadorNeutro) fuerte = e.ToString();
-                else if (m < Personaje.MultiplicadorNeutro) debil = e.ToString();
+                if (m > Personaje.MultiplicadorNeutro) fuerte = Idioma.NombreElemento(e);
+                else if (m < Personaje.MultiplicadorNeutro) debil = Idioma.NombreElemento(e);
             }
-            return "Fuerte contra " + fuerte + "  ·  Débil contra " + debil;
+            return Idioma.Texto("Fuerte contra ", "Strong against ") + fuerte + Idioma.Texto("  ·  Débil contra ", "  ·  Weak against ") + debil;
         }
 
         public static string DescripcionCompleta(Personaje p)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine(p.Nombre + "  [" + p.Elemento + "]");
+            sb.AppendLine(p.Nombre + "  [" + Idioma.NombreElemento(p.Elemento) + "]");
             sb.AppendLine("HP " + p.HpMax + "   ATK " + p.Atk + "   DEF " + p.Defensa + "   ENG " + p.EnergiaMax + "   EMP " + p.Empatia);
             sb.AppendLine(DescripcionTriangulo(p));
             sb.AppendLine(DescripcionHabilidad(p.HabilidadAtaque));

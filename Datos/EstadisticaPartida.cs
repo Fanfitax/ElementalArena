@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ArenaElemental.Datos
 {
-    /// <summary>Una partida jugada: es una fila de la tabla de estadísticas.</summary>
+    // Una partida jugada: es una fila de la tabla de estadísticas.
     public class EstadisticaPartida
     {
         public int IdPartida { get; set; }
@@ -16,7 +16,7 @@ namespace ArenaElemental.Datos
         public DateTime Fecha { get; set; }
     }
 
-    /// <summary>Los totales de un jugador, calculados a partir de su lista de partidas.</summary>
+    // Los totales de un jugador, calculados a partir de su lista de partidas.
     public class ResumenJugador
     {
         public ResumenJugador(List<EstadisticaPartida> partidas)
@@ -37,7 +37,7 @@ namespace ArenaElemental.Datos
         public int DanoTotal { get; private set; }
         public int TurnosTotales { get; private set; }
 
-        /// <summary>Victorias entre partidas, en porcentaje.</summary>
+        // Victorias entre partidas, en porcentaje.
         public double PorcentajeVictorias
         {
             get
@@ -47,7 +47,7 @@ namespace ArenaElemental.Datos
             }
         }
 
-        /// <summary>Rondas promedio por partida.</summary>
+        // Rondas promedio por partida.
         public double PromedioTurnos
         {
             get
@@ -58,10 +58,8 @@ namespace ArenaElemental.Datos
         }
     }
 
-    /// <summary>
-    /// Una fila del ranking: un jugador con sus totales y sus puntos.
-    /// Puntos: victoria = 3, derrota = 1 (por jugar), abandono = 0.
-    /// </summary>
+    // Una fila del ranking: un jugador con sus totales y sus puntos.
+    // Puntos: victoria = 3, derrota = 1 (por jugar), abandono = 0.
     public class PuestoRanking
     {
         public const int PuntosPorVictoria = 3;
@@ -89,7 +87,7 @@ namespace ArenaElemental.Datos
         public double PorcentajeVictorias { get; private set; }
         public int DanoTotal { get; private set; }
 
-        /// <summary>El porcentaje de victorias ya escrito para la tabla (por ejemplo "66.7%").</summary>
+        // El porcentaje de victorias ya escrito para la tabla (por ejemplo "66.7%").
         public string Efectividad
         {
             get { return PorcentajeVictorias.ToString("0.#") + "%"; }
