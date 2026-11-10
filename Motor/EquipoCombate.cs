@@ -4,14 +4,14 @@ using ArenaElemental.Modelos;
 
 namespace ArenaElemental.Motor
 {
-    // Un equipo de 3 personajes. Uno está en el campo (el "activo") y los otros dos esperan
+    // Un equipo de 5 personajes. Uno está en el campo (el "activo") y los otros cuatro esperan
     // en una COLA (Queue): el primero que entró a la cola es el primero que sale a pelear.
     // Cuando se hace un relevo, entra el primero de la cola y el que sale se forma al final.
     public class EquipoCombate
     {
-        public const int TamanoEquipo = 3;
+        public const int TamanoEquipo = 5;
 
-        private List<Personaje> miembros = new List<Personaje>();   // los 3 personajes (para mostrarlos)
+        private List<Personaje> miembros = new List<Personaje>();   // los 5 personajes (para mostrarlos)
         private Queue<Personaje> banca = new Queue<Personaje>();    // la COLA de relevos
         private Personaje activo;                                   // el que está peleando
         private int danoInfligido;
@@ -50,7 +50,7 @@ namespace ArenaElemental.Motor
         public string Nombre { get; private set; }
         public bool EsJugador { get; private set; }
 
-        // Los 3 personajes del equipo (vivos o derrotados).
+        // Los 5 personajes del equipo (vivos o derrotados).
         public List<Personaje> Miembros
         {
             get { return miembros; }

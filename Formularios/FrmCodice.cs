@@ -14,7 +14,6 @@ namespace ArenaElemental.Formularios
     // Los textos salen de la clase LorePersonajes.
     public class FrmCodice : FormularioModerno
     {
-        private static Color PanelOscuro = Color.FromArgb(205, 10, 12, 18);
         private static Color FondoTexto = Color.FromArgb(12, 14, 22);
 
         private const int SeccionHistoria = 0;
@@ -29,7 +28,9 @@ namespace ArenaElemental.Formularios
         private Button[] botonesSeccion;
         private string[] nombresSeccion = new string[] { Idioma.Texto("HISTORIA & LORE", "HISTORY & LORE"), Idioma.Texto("DIMENSIÓN ANTROPOLÓGICA", "ANTHROPOLOGICAL DIMENSION"), Idioma.Texto("FICHA TÉCNICA", "TECH SHEET") };
         private VistaCarta carta;
-        private Label lblDilema, lblNombreLore, lblConcepto;
+        private Label lblDilema;
+        private Label lblNombreLore;
+        private Label lblConcepto;
         private RichTextBox texto;
 
         // Fuentes del texto (se crean una sola vez y se liberan al cerrar).
@@ -40,52 +41,62 @@ namespace ArenaElemental.Formularios
         private Font fuenteNegrita = new Font("Segoe UI", 11f, FontStyle.Bold);
         private Font fuentePestana = new Font("Segoe UI", 9f, FontStyle.Bold);
 
+        // Los controles se declaran como campos para que el diseñador de SharpDevelop los reconozca.
+        private Label lblTitulo;
+        private Label lblSubtitulo;
+        private Button btnVolver;
+        private Label lblEncabezadoFuego;
+        private Label lblEncabezadoAgua;
+        private Label lblEncabezadoTierra;
+        private Label lblEncabezadoAire;
+        private Panel panelDilema;
+        private Label lblEtiquetaDilema;
+        private Panel panelTexto;
+        private Button btnHistoria;
+        private Button btnAntropologia;
+        private Button btnFicha;
+
         public FrmCodice(List<Personaje> personajes)
         {
             this.personajes = new List<Personaje>(personajes);
 
-            Estilo.AplicarFormulario(this, Idioma.Texto("Arena Elemental - Códice Elemental", "Arena Elemental - Elemental Codex"), 1120, 640);
-            ConstruirEncabezado();
+            InitializeComponent();
+
+            // Lo que cambia según el idioma (el diseñador solo muestra la versión en español).
+            Text = Idioma.Texto("Arena Elemental - Códice Elemental", "Arena Elemental - Elemental Codex");
+            lblTitulo.Text = Idioma.Texto("CÓDICE ELEMENTAL", "ELEMENTAL CODEX");
+            lblSubtitulo.Text = Idioma.Texto("Galería de personajes · Historia y reflexión de Antropología Filosófica", "Character gallery · History and reflection from Philosophical Anthropology");
+            lblEtiquetaDilema.Text = Idioma.Texto("EL DILEMA", "THE DILEMMA");
+            Estilo.EstilizarBoton(btnVolver, Idioma.Texto("Volver", "Back"), Estilo.PanelClaro);
+            Estilo.Redondear(panelDilema, 12);
+            Estilo.Redondear(panelTexto, 14);
+            texto.BackColor = FondoTexto;       // después de ReadOnly, que cambia el color de fondo por defecto
+
+            // Las tres pestañas: cada botón guarda en Tag el número de su sección.
+            botonesSeccion = new Button[] { btnHistoria, btnAntropologia, btnFicha };
+            for (int i = 0; i < botonesSeccion.Length; i++)
+                botonesSeccion[i].Tag = i;
+            ActualizarPestanas();
+
             ConstruirGaleria();
             ConstruirCarta();
-            ConstruirPanelTexto();
 
             if (this.personajes.Count > 0) Seleccionar(this.personajes[0]);
         }
 
         // ---------- Construcción de la interfaz ----------
 
-        private void ConstruirEncabezado()
-        {
-            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("CÓDICE ELEMENTAL", "ELEMENTAL CODEX"), 20, 8, 600, 38, 22f, true);
-            titulo.ForeColor = Color.Gold;
-            Controls.Add(titulo);
-
-            Label sub = Estilo.CrearEtiqueta(Idioma.Texto("Galería de personajes · Historia y reflexión de Antropología Filosófica", "Character gallery · History and reflection from Philosophical Anthropology"), 22, 46, 800, 20, 9.5f, false);
-            sub.ForeColor = Estilo.TextoSuave;
-            Controls.Add(sub);
-
-            Button cerrar = new Button();
-            cerrar.SetBounds(990, 14, 110, 32);
-            Estilo.EstilizarBoton(cerrar, Idioma.Texto("Volver", "Back"), Estilo.PanelClaro);
-            cerrar.Click += Volver_Click;
-            Controls.Add(cerrar);
-            CancelButton = cerrar;
-        }
-
-        // La lista de la izquierda: un encabezado por elemento y un botón por personaje.
+        // La lista de la izquierda: un encabezado por elemento (ya creados en InitializeComponent) y un botón por personaje.
         private void ConstruirGaleria()
         {
             Elemento[] elementos = new Elemento[] { Elemento.Fuego, Elemento.Agua, Elemento.Tierra, Elemento.Aire };
+            Label[] encabezados = new Label[] { lblEncabezadoFuego, lblEncabezadoAgua, lblEncabezadoTierra, lblEncabezadoAire };
             botonesPersonaje = new Button[personajes.Count];
 
             for (int e = 0; e < elementos.Length; e++)
             {
                 int y = 76 + e * 134;
-                Label encabezado = Estilo.CrearEtiqueta(Idioma.NombreElemento(elementos[e]).ToUpper() + "  ·  " + Estilo.RolDe(elementos[e]),
-                                                        20, y, 190, 18, 9f, true);
-                encabezado.ForeColor = Estilo.ColorDe(elementos[e]);
-                Controls.Add(encabezado);
+                encabezados[e].Text = Idioma.NombreElemento(elementos[e]).ToUpper() + "  ·  " + Estilo.RolDe(elementos[e]);
 
                 int fila = 0;
                 for (int i = 0; i < personajes.Count; i++)
@@ -104,74 +115,271 @@ namespace ArenaElemental.Formularios
             }
         }
 
+        // La carta grande se crea por código porque es un control propio que se llena con los datos del personaje.
         private void ConstruirCarta()
         {
             carta = new VistaCarta(TamanoCarta.Grande);
             carta.Location = new Point(232, 76);
             Controls.Add(carta);
-
-            Panel marco = new Panel();
-            marco.SetBounds(232, 504, 232, 108);
-            marco.BackColor = PanelOscuro;
-            Controls.Add(marco);
-            Estilo.Redondear(marco, 12);
-
-            Label etiqueta = Estilo.CrearEtiqueta(Idioma.Texto("EL DILEMA", "THE DILEMMA"), 10, 6, 210, 16, 8.5f, true);
-            etiqueta.ForeColor = Color.Gold;
-            marco.Controls.Add(etiqueta);
-
-            lblDilema = Estilo.CrearEtiqueta(string.Empty, 10, 24, 212, 80, 9f, false);
-            lblDilema.Font = new Font("Segoe UI", 9f, FontStyle.Italic);
-            marco.Controls.Add(lblDilema);
         }
 
-        // El panel de la derecha: las 3 pestañas, el nombre del personaje y el texto con barra de desplazamiento.
-        private void ConstruirPanelTexto()
+        // Código del diseñador: aquí se crean y se colocan los controles de la ventana.
+        private void InitializeComponent()
         {
-            Panel panel = new Panel();
-            panel.SetBounds(484, 76, 616, 536);
-            panel.BackColor = PanelOscuro;
-            Controls.Add(panel);
-            Estilo.Redondear(panel, 14);
-
-            int[] anchos = new int[] { 170, 230, 160 };
-            botonesSeccion = new Button[nombresSeccion.Length];
-            int x = 12;
-            for (int i = 0; i < nombresSeccion.Length; i++)
-            {
-                Button b = new Button();
-                b.Tag = i;   // número de la sección
-                b.SetBounds(x, 12, anchos[i], 34);
-                b.UseMnemonic = false;   // para que el "&" de Idioma.Texto("HISTORIA & LORE", "HISTORY & LORE") se vea como un símbolo y no como atajo de teclado
-                b.Click += Seccion_Click;
-                panel.Controls.Add(b);
-                botonesSeccion[i] = b;
-                x += anchos[i] + 8;
-            }
-
-            lblNombreLore = Estilo.CrearEtiqueta(string.Empty, 14, 56, 590, 32, 17f, true);
-            lblNombreLore.ForeColor = Color.Gold;
-            panel.Controls.Add(lblNombreLore);
-
-            lblConcepto = Estilo.CrearEtiqueta(string.Empty, 16, 90, 590, 20, 9.5f, true);
-            panel.Controls.Add(lblConcepto);
-
-            texto = new RichTextBox();
-            texto.SetBounds(12, 118, 592, 408);
-            texto.ReadOnly = true;
-            texto.BorderStyle = BorderStyle.None;
-            texto.DetectUrls = false;
-            texto.ScrollBars = RichTextBoxScrollBars.Vertical;
-            texto.BackColor = FondoTexto;       // después de ReadOnly, que cambia el color de fondo por defecto
-            texto.ForeColor = Color.WhiteSmoke;
-            texto.Cursor = Cursors.Default;
-            texto.TabStop = false;
-            texto.MouseEnter += Texto_MouseEnter;   // así la rueda del mouse desplaza el texto
-            panel.Controls.Add(texto);
-
-            ActualizarPestanas();
+            this.lblTitulo = new System.Windows.Forms.Label();
+            this.lblSubtitulo = new System.Windows.Forms.Label();
+            this.btnVolver = new System.Windows.Forms.Button();
+            this.lblEncabezadoFuego = new System.Windows.Forms.Label();
+            this.lblEncabezadoAgua = new System.Windows.Forms.Label();
+            this.lblEncabezadoTierra = new System.Windows.Forms.Label();
+            this.lblEncabezadoAire = new System.Windows.Forms.Label();
+            this.panelDilema = new System.Windows.Forms.Panel();
+            this.lblEtiquetaDilema = new System.Windows.Forms.Label();
+            this.lblDilema = new System.Windows.Forms.Label();
+            this.panelTexto = new System.Windows.Forms.Panel();
+            this.btnHistoria = new System.Windows.Forms.Button();
+            this.btnAntropologia = new System.Windows.Forms.Button();
+            this.btnFicha = new System.Windows.Forms.Button();
+            this.lblNombreLore = new System.Windows.Forms.Label();
+            this.lblConcepto = new System.Windows.Forms.Label();
+            this.texto = new System.Windows.Forms.RichTextBox();
+            this.panelDilema.SuspendLayout();
+            this.panelTexto.SuspendLayout();
+            this.SuspendLayout();
+            //
+            // lblTitulo
+            //
+            this.lblTitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 22F, System.Drawing.FontStyle.Bold);
+            this.lblTitulo.ForeColor = System.Drawing.Color.Gold;
+            this.lblTitulo.Location = new System.Drawing.Point(20, 8);
+            this.lblTitulo.Name = "lblTitulo";
+            this.lblTitulo.Size = new System.Drawing.Size(600, 38);
+            this.lblTitulo.TabIndex = 0;
+            this.lblTitulo.Text = "CÓDICE ELEMENTAL";
+            //
+            // lblSubtitulo
+            //
+            this.lblSubtitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lblSubtitulo.ForeColor = System.Drawing.Color.FromArgb(165, 170, 200);
+            this.lblSubtitulo.Location = new System.Drawing.Point(22, 46);
+            this.lblSubtitulo.Name = "lblSubtitulo";
+            this.lblSubtitulo.Size = new System.Drawing.Size(800, 20);
+            this.lblSubtitulo.TabIndex = 1;
+            this.lblSubtitulo.Text = "Galería de personajes · Historia y reflexión de Antropología Filosófica";
+            //
+            // btnVolver
+            //
+            this.btnVolver.BackColor = System.Drawing.Color.FromArgb(58, 62, 92);
+            this.btnVolver.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnVolver.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnVolver.ForeColor = System.Drawing.Color.White;
+            this.btnVolver.Location = new System.Drawing.Point(990, 14);
+            this.btnVolver.Name = "btnVolver";
+            this.btnVolver.Size = new System.Drawing.Size(110, 32);
+            this.btnVolver.TabIndex = 2;
+            this.btnVolver.Text = "Volver";
+            this.btnVolver.UseVisualStyleBackColor = false;
+            this.btnVolver.Click += new System.EventHandler(this.Volver_Click);
+            //
+            // lblEncabezadoFuego
+            //
+            this.lblEncabezadoFuego.BackColor = System.Drawing.Color.Transparent;
+            this.lblEncabezadoFuego.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblEncabezadoFuego.ForeColor = System.Drawing.Color.FromArgb(226, 88, 52);
+            this.lblEncabezadoFuego.Location = new System.Drawing.Point(20, 76);
+            this.lblEncabezadoFuego.Name = "lblEncabezadoFuego";
+            this.lblEncabezadoFuego.Size = new System.Drawing.Size(190, 18);
+            this.lblEncabezadoFuego.TabIndex = 3;
+            this.lblEncabezadoFuego.Text = "FUEGO  ·  ATACANTE";
+            //
+            // lblEncabezadoAgua
+            //
+            this.lblEncabezadoAgua.BackColor = System.Drawing.Color.Transparent;
+            this.lblEncabezadoAgua.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblEncabezadoAgua.ForeColor = System.Drawing.Color.FromArgb(52, 136, 226);
+            this.lblEncabezadoAgua.Location = new System.Drawing.Point(20, 210);
+            this.lblEncabezadoAgua.Name = "lblEncabezadoAgua";
+            this.lblEncabezadoAgua.Size = new System.Drawing.Size(190, 18);
+            this.lblEncabezadoAgua.TabIndex = 4;
+            this.lblEncabezadoAgua.Text = "AGUA  ·  APOYO";
+            //
+            // lblEncabezadoTierra
+            //
+            this.lblEncabezadoTierra.BackColor = System.Drawing.Color.Transparent;
+            this.lblEncabezadoTierra.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblEncabezadoTierra.ForeColor = System.Drawing.Color.FromArgb(150, 108, 62);
+            this.lblEncabezadoTierra.Location = new System.Drawing.Point(20, 344);
+            this.lblEncabezadoTierra.Name = "lblEncabezadoTierra";
+            this.lblEncabezadoTierra.Size = new System.Drawing.Size(190, 18);
+            this.lblEncabezadoTierra.TabIndex = 5;
+            this.lblEncabezadoTierra.Text = "TIERRA  ·  TANQUE";
+            //
+            // lblEncabezadoAire
+            //
+            this.lblEncabezadoAire.BackColor = System.Drawing.Color.Transparent;
+            this.lblEncabezadoAire.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblEncabezadoAire.ForeColor = System.Drawing.Color.FromArgb(120, 196, 196);
+            this.lblEncabezadoAire.Location = new System.Drawing.Point(20, 478);
+            this.lblEncabezadoAire.Name = "lblEncabezadoAire";
+            this.lblEncabezadoAire.Size = new System.Drawing.Size(190, 18);
+            this.lblEncabezadoAire.TabIndex = 6;
+            this.lblEncabezadoAire.Text = "AIRE  ·  VELOZ";
+            //
+            // panelDilema
+            //
+            this.panelDilema.BackColor = System.Drawing.Color.FromArgb(205, 10, 12, 18);
+            this.panelDilema.Controls.Add(this.lblEtiquetaDilema);
+            this.panelDilema.Controls.Add(this.lblDilema);
+            this.panelDilema.Location = new System.Drawing.Point(232, 504);
+            this.panelDilema.Name = "panelDilema";
+            this.panelDilema.Size = new System.Drawing.Size(232, 108);
+            this.panelDilema.TabIndex = 7;
+            //
+            //
+            // lblEtiquetaDilema
+            //
+            this.lblEtiquetaDilema.BackColor = System.Drawing.Color.Transparent;
+            this.lblEtiquetaDilema.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblEtiquetaDilema.ForeColor = System.Drawing.Color.Gold;
+            this.lblEtiquetaDilema.Location = new System.Drawing.Point(10, 6);
+            this.lblEtiquetaDilema.Name = "lblEtiquetaDilema";
+            this.lblEtiquetaDilema.Size = new System.Drawing.Size(210, 16);
+            this.lblEtiquetaDilema.TabIndex = 0;
+            this.lblEtiquetaDilema.Text = "EL DILEMA";
+            //
+            // lblDilema
+            //
+            this.lblDilema.BackColor = System.Drawing.Color.Transparent;
+            this.lblDilema.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
+            this.lblDilema.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblDilema.Location = new System.Drawing.Point(10, 24);
+            this.lblDilema.Name = "lblDilema";
+            this.lblDilema.Size = new System.Drawing.Size(212, 80);
+            this.lblDilema.TabIndex = 1;
+            //
+            // panelTexto
+            //
+            this.panelTexto.BackColor = System.Drawing.Color.FromArgb(205, 10, 12, 18);
+            this.panelTexto.Controls.Add(this.btnHistoria);
+            this.panelTexto.Controls.Add(this.btnAntropologia);
+            this.panelTexto.Controls.Add(this.btnFicha);
+            this.panelTexto.Controls.Add(this.lblNombreLore);
+            this.panelTexto.Controls.Add(this.lblConcepto);
+            this.panelTexto.Controls.Add(this.texto);
+            this.panelTexto.Location = new System.Drawing.Point(484, 76);
+            this.panelTexto.Name = "panelTexto";
+            this.panelTexto.Size = new System.Drawing.Size(616, 536);
+            this.panelTexto.TabIndex = 8;            //
+            // btnHistoria
+            //
+            this.btnHistoria.BackColor = System.Drawing.Color.FromArgb(58, 62, 92);
+            this.btnHistoria.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnHistoria.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnHistoria.ForeColor = System.Drawing.Color.White;
+            this.btnHistoria.Location = new System.Drawing.Point(12, 12);
+            this.btnHistoria.Name = "btnHistoria";
+            this.btnHistoria.Size = new System.Drawing.Size(170, 34);
+            this.btnHistoria.TabIndex = 0;
+            this.btnHistoria.Text = "HISTORIA & LORE";
+            this.btnHistoria.UseMnemonic = false;
+            this.btnHistoria.UseVisualStyleBackColor = false;
+            this.btnHistoria.Click += new System.EventHandler(this.Seccion_Click);
+            //
+            // btnAntropologia
+            //
+            this.btnAntropologia.BackColor = System.Drawing.Color.FromArgb(58, 62, 92);
+            this.btnAntropologia.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnAntropologia.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnAntropologia.ForeColor = System.Drawing.Color.White;
+            this.btnAntropologia.Location = new System.Drawing.Point(190, 12);
+            this.btnAntropologia.Name = "btnAntropologia";
+            this.btnAntropologia.Size = new System.Drawing.Size(230, 34);
+            this.btnAntropologia.TabIndex = 1;
+            this.btnAntropologia.Text = "DIMENSIÓN ANTROPOLÓGICA";
+            this.btnAntropologia.UseMnemonic = false;
+            this.btnAntropologia.UseVisualStyleBackColor = false;
+            this.btnAntropologia.Click += new System.EventHandler(this.Seccion_Click);
+            //
+            // btnFicha
+            //
+            this.btnFicha.BackColor = System.Drawing.Color.FromArgb(58, 62, 92);
+            this.btnFicha.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnFicha.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnFicha.ForeColor = System.Drawing.Color.White;
+            this.btnFicha.Location = new System.Drawing.Point(428, 12);
+            this.btnFicha.Name = "btnFicha";
+            this.btnFicha.Size = new System.Drawing.Size(160, 34);
+            this.btnFicha.TabIndex = 2;
+            this.btnFicha.Text = "FICHA TÉCNICA";
+            this.btnFicha.UseMnemonic = false;
+            this.btnFicha.UseVisualStyleBackColor = false;
+            this.btnFicha.Click += new System.EventHandler(this.Seccion_Click);
+            //
+            // lblNombreLore
+            //
+            this.lblNombreLore.BackColor = System.Drawing.Color.Transparent;
+            this.lblNombreLore.Font = new System.Drawing.Font("Segoe UI", 17F, System.Drawing.FontStyle.Bold);
+            this.lblNombreLore.ForeColor = System.Drawing.Color.Gold;
+            this.lblNombreLore.Location = new System.Drawing.Point(14, 56);
+            this.lblNombreLore.Name = "lblNombreLore";
+            this.lblNombreLore.Size = new System.Drawing.Size(590, 32);
+            this.lblNombreLore.TabIndex = 3;
+            this.lblNombreLore.Text = "";
+            //
+            // lblConcepto
+            //
+            this.lblConcepto.BackColor = System.Drawing.Color.Transparent;
+            this.lblConcepto.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lblConcepto.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblConcepto.Location = new System.Drawing.Point(16, 90);
+            this.lblConcepto.Name = "lblConcepto";
+            this.lblConcepto.Size = new System.Drawing.Size(590, 20);
+            this.lblConcepto.TabIndex = 4;
+            this.lblConcepto.Text = "";
+            //
+            // texto
+            //
+            this.texto.BackColor = System.Drawing.Color.FromArgb(12, 14, 22);
+            this.texto.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.texto.DetectUrls = false;
+            this.texto.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.texto.Location = new System.Drawing.Point(12, 118);
+            this.texto.Name = "texto";
+            this.texto.ReadOnly = true;
+            this.texto.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+            this.texto.Size = new System.Drawing.Size(592, 408);
+            this.texto.TabIndex = 5;
+            this.texto.TabStop = false;
+            this.texto.Text = "";
+            this.texto.MouseEnter += new System.EventHandler(this.Texto_MouseEnter);
+            //
+            // FrmCodice
+            //
+            this.BackColor = System.Drawing.Color.FromArgb(24, 26, 40);
+            this.CancelButton = this.btnVolver;
+            this.ClientSize = new System.Drawing.Size(1120, 640);
+            this.Controls.Add(this.lblTitulo);
+            this.Controls.Add(this.lblSubtitulo);
+            this.Controls.Add(this.btnVolver);
+            this.Controls.Add(this.lblEncabezadoFuego);
+            this.Controls.Add(this.lblEncabezadoAgua);
+            this.Controls.Add(this.lblEncabezadoTierra);
+            this.Controls.Add(this.lblEncabezadoAire);
+            this.Controls.Add(this.panelDilema);
+            this.Controls.Add(this.panelTexto);
+            this.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.Name = "FrmCodice";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Arena Elemental - Códice Elemental";
+            this.panelDilema.ResumeLayout(false);
+            this.panelTexto.ResumeLayout(false);
+            this.ResumeLayout(false);
         }
-
         // ---------- Eventos de los controles ----------
 
         private void Volver_Click(object sender, EventArgs e)

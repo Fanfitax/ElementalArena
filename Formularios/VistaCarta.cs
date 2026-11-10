@@ -60,7 +60,7 @@ namespace ArenaElemental.Formularios
 
             if (pequena)
             {
-                Size = new Size(92, 198);
+                Size = new Size(92, 140);
                 ConstruirPequena();
             }
             else if (mediana)
@@ -184,12 +184,13 @@ namespace ArenaElemental.Formularios
             panelCabecera.Paint += Hijo_PintarFoil;
             Controls.Add(panelCabecera);
 
-            pbImagen = CrearImagen(3, 26, 86, 92);
+            pbImagen = CrearImagen(3, 26, 86, 60);
 
-            lblHp = CrearTexto(this, 4, 120, 84, 14, 7.5f, true);
-            barHp = CrearBarra(4, 135, 84, 7);
-            lblStats = CrearTexto(this, 4, 145, 84, 14, 7.5f, false);
-            lblEstado = CrearTexto(this, 3, 163, 86, 30, 7.5f, true);   // admite 2 líneas (Idioma.Texto("SIGUE EN ENTRAR", "NEXT IN"))
+            lblHp = CrearTexto(this, 4, 88, 84, 14, 7.5f, true);
+            barHp = CrearBarra(4, 103, 84, 7);
+            lblStats = CrearTexto(this, 4, 112, 84, 14, 7.5f, false);
+            lblStats.Visible = false;   // en la banca (4 cartas) no hay lugar para la línea de ATK y DEF
+            lblEstado = CrearTexto(this, 3, 111, 86, 28, 7.5f, true);   // admite 2 líneas (Idioma.Texto("SIGUE EN ENTRAR", "NEXT IN"))
             lblEstado.TextAlign = ContentAlignment.MiddleCenter;
         }
 

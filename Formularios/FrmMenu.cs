@@ -22,7 +22,13 @@ namespace ArenaElemental.Formularios
         private Random azar = new Random();
         private TextBox txtJugador;
 
-        // Controles cuyo texto cambia al elegir el idioma.
+        // Los controles se declaran como campos para que el diseñador de SharpDevelop los reconozca.
+        private Label lblArena;
+        private Label lblElemental;
+        private Panel franjaFuego;
+        private Panel franjaAgua;
+        private Panel franjaTierra;
+        private Panel franjaAire;
         private Label lblSubtitulo;
         private Label lblTriangulo;
         private Label lblEtiquetaNombre;
@@ -38,125 +44,303 @@ namespace ArenaElemental.Formularios
 
         public FrmMenu()
         {
-            Estilo.AplicarFormulario(this, "Arena Elemental", 1120, 640);
-            CrearTitulo();
-            CrearCajaDeNombre();
-            CrearBotones();
-            CrearBotonesDeIdioma();
-            ActualizarTextos();
-        }
+            InitializeComponent();
 
-        // ---------- Construcción de la interfaz ----------
-
-        private void CrearTitulo()
-        {
-            Label arena = Estilo.CrearEtiqueta("ARENA", 46, 56, 400, 100, 60f, true);
-            Controls.Add(arena);
-
-            Label elemental = Estilo.CrearEtiqueta("ELEMENTAL", 52, 150, 400, 52, 30f, true);
-            elemental.ForeColor = Color.Gold;
-            Controls.Add(elemental);
-
-            // Barrita con los cuatro colores de los elementos.
-            for (int i = 0; i < 4; i++)
-            {
-                Panel franja = new Panel();
-                franja.SetBounds(56 + i * 90, 212, 84, 6);
-                franja.BackColor = Estilo.ColorDe(ElementosHeroes[i]);
-                Controls.Add(franja);
-            }
-
-            lblSubtitulo = Estilo.CrearEtiqueta("", 54, 230, 380, 24, 11f, false);
-            lblSubtitulo.ForeColor = Estilo.TextoSuave;
-            Controls.Add(lblSubtitulo);
-
-            lblTriangulo = Estilo.CrearEtiqueta("", 54, 256, 380, 20, 9f, true);
-            lblTriangulo.ForeColor = Color.Gold;
-            Controls.Add(lblTriangulo);
-        }
-
-        private void CrearCajaDeNombre()
-        {
-            lblEtiquetaNombre = Estilo.CrearEtiqueta("", 54, 318, 300, 20, 9.5f, true);
-            lblEtiquetaNombre.ForeColor = Color.Gold;
-            Controls.Add(lblEtiquetaNombre);
-
-            txtJugador = new TextBox();
-            txtJugador.SetBounds(54, 342, 340, 36);
-            txtJugador.Font = new Font("Segoe UI", 14f);
-            txtJugador.BackColor = Color.FromArgb(16, 20, 32);
-            txtJugador.ForeColor = Color.White;
-            txtJugador.BorderStyle = BorderStyle.FixedSingle;
-            txtJugador.MaxLength = 30;
-            txtJugador.Text = Environment.UserName;
-            Controls.Add(txtJugador);
-        }
-
-        private void CrearBotones()
-        {
-            btnJugar = new Button();
-            btnJugar.SetBounds(54, 392, 340, 50);
+            // Lo que el diseñador no puede hacer: botones planos con esquinas redondeadas.
             Estilo.EstilizarBoton(btnJugar, "", Color.FromArgb(46, 160, 96));
             btnJugar.Font = new Font("Segoe UI", 14f, FontStyle.Bold);
-            btnJugar.Click += BtnJugar_Click;
-            Controls.Add(btnJugar);
-
-            btnLan = new Button();
-            btnLan.SetBounds(54, 448, 340, 42);
             Estilo.EstilizarBoton(btnLan, "", Color.FromArgb(196, 120, 24));
             btnLan.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-            btnLan.Click += BtnLan_Click;
-            Controls.Add(btnLan);
-
-            btnStats = new Button();
-            btnStats.SetBounds(54, 496, 166, 40);
             Estilo.EstilizarBoton(btnStats, "", Estilo.Acento);
-            btnStats.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
-            btnStats.Click += BtnStats_Click;
-            Controls.Add(btnStats);
-
-            btnCodice = new Button();
-            btnCodice.SetBounds(228, 496, 166, 40);
             Estilo.EstilizarBoton(btnCodice, "", Color.FromArgb(118, 78, 178));
-            btnCodice.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
-            btnCodice.Click += BtnCodice_Click;
-            Controls.Add(btnCodice);
-
-            btnRanking = new Button();
-            btnRanking.SetBounds(54, 544, 166, 36);
             Estilo.EstilizarBoton(btnRanking, "", Color.FromArgb(176, 132, 28));
-            btnRanking.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
-            btnRanking.Click += BtnRanking_Click;
-            Controls.Add(btnRanking);
-
-            btnSalir = new Button();
-            btnSalir.SetBounds(228, 544, 166, 36);
             Estilo.EstilizarBoton(btnSalir, "", Estilo.PanelClaro);
-            btnSalir.Click += BtnSalir_Click;
-            Controls.Add(btnSalir);
-
-            lblNota = Estilo.CrearEtiqueta("", 54, 594, 400, 20, 8.5f, false);
-            lblNota.ForeColor = Estilo.TextoSuave;
-            Controls.Add(lblNota);
-            AcceptButton = btnJugar;
+            ActualizarTextos();
+            txtJugador.Text = Environment.UserName;
         }
 
-        // Los dos botones pequeños de arriba para elegir el idioma.
-        private void CrearBotonesDeIdioma()
+        // Código del diseñador: aquí se crean y se colocan los controles de la ventana.
+        private void InitializeComponent()
         {
-            btnEspanol = new Button();
-            btnEspanol.SetBounds(54, 16, 100, 28);
-            btnEspanol.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            btnEspanol.Click += BtnEspanol_Click;
-            Controls.Add(btnEspanol);
-
-            btnIngles = new Button();
-            btnIngles.SetBounds(162, 16, 100, 28);
-            btnIngles.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            btnIngles.Click += BtnIngles_Click;
-            Controls.Add(btnIngles);
+            this.lblArena = new System.Windows.Forms.Label();
+            this.lblElemental = new System.Windows.Forms.Label();
+            this.franjaFuego = new System.Windows.Forms.Panel();
+            this.franjaAgua = new System.Windows.Forms.Panel();
+            this.franjaTierra = new System.Windows.Forms.Panel();
+            this.franjaAire = new System.Windows.Forms.Panel();
+            this.lblSubtitulo = new System.Windows.Forms.Label();
+            this.lblTriangulo = new System.Windows.Forms.Label();
+            this.lblEtiquetaNombre = new System.Windows.Forms.Label();
+            this.txtJugador = new System.Windows.Forms.TextBox();
+            this.btnJugar = new System.Windows.Forms.Button();
+            this.btnLan = new System.Windows.Forms.Button();
+            this.btnStats = new System.Windows.Forms.Button();
+            this.btnCodice = new System.Windows.Forms.Button();
+            this.btnRanking = new System.Windows.Forms.Button();
+            this.btnSalir = new System.Windows.Forms.Button();
+            this.lblNota = new System.Windows.Forms.Label();
+            this.btnEspanol = new System.Windows.Forms.Button();
+            this.btnIngles = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            //
+            // lblArena
+            //
+            this.lblArena.BackColor = System.Drawing.Color.Transparent;
+            this.lblArena.Font = new System.Drawing.Font("Segoe UI", 60F, System.Drawing.FontStyle.Bold);
+            this.lblArena.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblArena.Location = new System.Drawing.Point(46, 56);
+            this.lblArena.Name = "lblArena";
+            this.lblArena.Size = new System.Drawing.Size(400, 100);
+            this.lblArena.TabIndex = 0;
+            this.lblArena.Text = "ARENA";
+            //
+            // lblElemental
+            //
+            this.lblElemental.BackColor = System.Drawing.Color.Transparent;
+            this.lblElemental.Font = new System.Drawing.Font("Segoe UI", 30F, System.Drawing.FontStyle.Bold);
+            this.lblElemental.ForeColor = System.Drawing.Color.Gold;
+            this.lblElemental.Location = new System.Drawing.Point(52, 150);
+            this.lblElemental.Name = "lblElemental";
+            this.lblElemental.Size = new System.Drawing.Size(400, 52);
+            this.lblElemental.TabIndex = 1;
+            this.lblElemental.Text = "ELEMENTAL";
+            //
+            // franjaFuego
+            //
+            this.franjaFuego.BackColor = System.Drawing.Color.FromArgb(226, 88, 52);
+            this.franjaFuego.Location = new System.Drawing.Point(56, 212);
+            this.franjaFuego.Name = "franjaFuego";
+            this.franjaFuego.Size = new System.Drawing.Size(84, 6);
+            this.franjaFuego.TabIndex = 2;
+            //
+            // franjaAgua
+            //
+            this.franjaAgua.BackColor = System.Drawing.Color.FromArgb(52, 136, 226);
+            this.franjaAgua.Location = new System.Drawing.Point(146, 212);
+            this.franjaAgua.Name = "franjaAgua";
+            this.franjaAgua.Size = new System.Drawing.Size(84, 6);
+            this.franjaAgua.TabIndex = 2;
+            //
+            // franjaTierra
+            //
+            this.franjaTierra.BackColor = System.Drawing.Color.FromArgb(150, 108, 62);
+            this.franjaTierra.Location = new System.Drawing.Point(236, 212);
+            this.franjaTierra.Name = "franjaTierra";
+            this.franjaTierra.Size = new System.Drawing.Size(84, 6);
+            this.franjaTierra.TabIndex = 2;
+            //
+            // franjaAire
+            //
+            this.franjaAire.BackColor = System.Drawing.Color.FromArgb(120, 196, 196);
+            this.franjaAire.Location = new System.Drawing.Point(326, 212);
+            this.franjaAire.Name = "franjaAire";
+            this.franjaAire.Size = new System.Drawing.Size(84, 6);
+            this.franjaAire.TabIndex = 2;
+            //
+            // lblSubtitulo
+            //
+            this.lblSubtitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.lblSubtitulo.ForeColor = System.Drawing.Color.FromArgb(165, 170, 200);
+            this.lblSubtitulo.Location = new System.Drawing.Point(54, 230);
+            this.lblSubtitulo.Name = "lblSubtitulo";
+            this.lblSubtitulo.Size = new System.Drawing.Size(380, 24);
+            this.lblSubtitulo.TabIndex = 3;
+            this.lblSubtitulo.Text = "Combate estratégico por turnos y relevos";
+            //
+            // lblTriangulo
+            //
+            this.lblTriangulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblTriangulo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblTriangulo.ForeColor = System.Drawing.Color.Gold;
+            this.lblTriangulo.Location = new System.Drawing.Point(54, 256);
+            this.lblTriangulo.Name = "lblTriangulo";
+            this.lblTriangulo.Size = new System.Drawing.Size(380, 20);
+            this.lblTriangulo.TabIndex = 4;
+            this.lblTriangulo.Text = "Agua > Fuego > Aire > Tierra > Agua";
+            //
+            // lblEtiquetaNombre
+            //
+            this.lblEtiquetaNombre.BackColor = System.Drawing.Color.Transparent;
+            this.lblEtiquetaNombre.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lblEtiquetaNombre.ForeColor = System.Drawing.Color.Gold;
+            this.lblEtiquetaNombre.Location = new System.Drawing.Point(54, 318);
+            this.lblEtiquetaNombre.Name = "lblEtiquetaNombre";
+            this.lblEtiquetaNombre.Size = new System.Drawing.Size(300, 20);
+            this.lblEtiquetaNombre.TabIndex = 5;
+            this.lblEtiquetaNombre.Text = "TU NOMBRE";
+            //
+            // txtJugador
+            //
+            this.txtJugador.BackColor = System.Drawing.Color.FromArgb(16, 20, 32);
+            this.txtJugador.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtJugador.Font = new System.Drawing.Font("Segoe UI", 14F);
+            this.txtJugador.ForeColor = System.Drawing.Color.White;
+            this.txtJugador.Location = new System.Drawing.Point(54, 342);
+            this.txtJugador.MaxLength = 30;
+            this.txtJugador.Name = "txtJugador";
+            this.txtJugador.Size = new System.Drawing.Size(340, 29);
+            this.txtJugador.TabIndex = 6;
+            //
+            // btnJugar
+            //
+            this.btnJugar.BackColor = System.Drawing.Color.FromArgb(46, 160, 96);
+            this.btnJugar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnJugar.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
+            this.btnJugar.ForeColor = System.Drawing.Color.White;
+            this.btnJugar.Location = new System.Drawing.Point(54, 392);
+            this.btnJugar.Name = "btnJugar";
+            this.btnJugar.Size = new System.Drawing.Size(340, 50);
+            this.btnJugar.TabIndex = 7;
+            this.btnJugar.Text = "NUEVA PARTIDA (VS CPU)";
+            this.btnJugar.UseVisualStyleBackColor = false;
+            this.btnJugar.Click += new System.EventHandler(this.BtnJugar_Click);
+            //
+            // btnLan
+            //
+            this.btnLan.BackColor = System.Drawing.Color.FromArgb(196, 120, 24);
+            this.btnLan.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnLan.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.btnLan.ForeColor = System.Drawing.Color.White;
+            this.btnLan.Location = new System.Drawing.Point(54, 448);
+            this.btnLan.Name = "btnLan";
+            this.btnLan.Size = new System.Drawing.Size(340, 42);
+            this.btnLan.TabIndex = 8;
+            this.btnLan.Text = "PARTIDA LAN (2 JUGADORES)";
+            this.btnLan.UseVisualStyleBackColor = false;
+            this.btnLan.Click += new System.EventHandler(this.BtnLan_Click);
+            //
+            // btnStats
+            //
+            this.btnStats.BackColor = System.Drawing.Color.FromArgb(96, 120, 220);
+            this.btnStats.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnStats.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnStats.ForeColor = System.Drawing.Color.White;
+            this.btnStats.Location = new System.Drawing.Point(54, 496);
+            this.btnStats.Name = "btnStats";
+            this.btnStats.Size = new System.Drawing.Size(166, 40);
+            this.btnStats.TabIndex = 9;
+            this.btnStats.Text = "ESTADÍSTICAS";
+            this.btnStats.UseVisualStyleBackColor = false;
+            this.btnStats.Click += new System.EventHandler(this.BtnStats_Click);
+            //
+            // btnCodice
+            //
+            this.btnCodice.BackColor = System.Drawing.Color.FromArgb(118, 78, 178);
+            this.btnCodice.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCodice.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnCodice.ForeColor = System.Drawing.Color.White;
+            this.btnCodice.Location = new System.Drawing.Point(228, 496);
+            this.btnCodice.Name = "btnCodice";
+            this.btnCodice.Size = new System.Drawing.Size(166, 40);
+            this.btnCodice.TabIndex = 10;
+            this.btnCodice.Text = "CÓDICE ELEMENTAL";
+            this.btnCodice.UseVisualStyleBackColor = false;
+            this.btnCodice.Click += new System.EventHandler(this.BtnCodice_Click);
+            //
+            // btnRanking
+            //
+            this.btnRanking.BackColor = System.Drawing.Color.FromArgb(176, 132, 28);
+            this.btnRanking.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRanking.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnRanking.ForeColor = System.Drawing.Color.White;
+            this.btnRanking.Location = new System.Drawing.Point(54, 544);
+            this.btnRanking.Name = "btnRanking";
+            this.btnRanking.Size = new System.Drawing.Size(166, 36);
+            this.btnRanking.TabIndex = 11;
+            this.btnRanking.Text = "RANKING";
+            this.btnRanking.UseVisualStyleBackColor = false;
+            this.btnRanking.Click += new System.EventHandler(this.BtnRanking_Click);
+            //
+            // btnSalir
+            //
+            this.btnSalir.BackColor = System.Drawing.Color.FromArgb(58, 62, 92);
+            this.btnSalir.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSalir.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnSalir.ForeColor = System.Drawing.Color.White;
+            this.btnSalir.Location = new System.Drawing.Point(228, 544);
+            this.btnSalir.Name = "btnSalir";
+            this.btnSalir.Size = new System.Drawing.Size(166, 36);
+            this.btnSalir.TabIndex = 12;
+            this.btnSalir.Text = "SALIR";
+            this.btnSalir.UseVisualStyleBackColor = false;
+            this.btnSalir.Click += new System.EventHandler(this.BtnSalir_Click);
+            //
+            // lblNota
+            //
+            this.lblNota.BackColor = System.Drawing.Color.Transparent;
+            this.lblNota.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.lblNota.ForeColor = System.Drawing.Color.FromArgb(165, 170, 200);
+            this.lblNota.Location = new System.Drawing.Point(54, 594);
+            this.lblNota.Name = "lblNota";
+            this.lblNota.Size = new System.Drawing.Size(400, 20);
+            this.lblNota.TabIndex = 13;
+            this.lblNota.Text = "Las partidas se guardan en partidas.txt, junto al programa.";
+            //
+            // btnEspanol
+            //
+            this.btnEspanol.BackColor = System.Drawing.Color.FromArgb(200, 150, 30);
+            this.btnEspanol.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnEspanol.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnEspanol.ForeColor = System.Drawing.Color.White;
+            this.btnEspanol.Location = new System.Drawing.Point(54, 16);
+            this.btnEspanol.Name = "btnEspanol";
+            this.btnEspanol.Size = new System.Drawing.Size(100, 28);
+            this.btnEspanol.TabIndex = 14;
+            this.btnEspanol.Text = "ESPAÑOL";
+            this.btnEspanol.UseVisualStyleBackColor = false;
+            this.btnEspanol.Click += new System.EventHandler(this.BtnEspanol_Click);
+            //
+            // btnIngles
+            //
+            this.btnIngles.BackColor = System.Drawing.Color.FromArgb(58, 62, 92);
+            this.btnIngles.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnIngles.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnIngles.ForeColor = System.Drawing.Color.White;
+            this.btnIngles.Location = new System.Drawing.Point(162, 16);
+            this.btnIngles.Name = "btnIngles";
+            this.btnIngles.Size = new System.Drawing.Size(100, 28);
+            this.btnIngles.TabIndex = 15;
+            this.btnIngles.Text = "ENGLISH";
+            this.btnIngles.UseVisualStyleBackColor = false;
+            this.btnIngles.Click += new System.EventHandler(this.BtnIngles_Click);
+            //
+            // FrmMenu
+            //
+            this.AcceptButton = this.btnJugar;
+            this.BackColor = System.Drawing.Color.FromArgb(24, 26, 40);
+            this.ClientSize = new System.Drawing.Size(1120, 640);
+            this.Controls.Add(this.lblArena);
+            this.Controls.Add(this.lblElemental);
+            this.Controls.Add(this.franjaFuego);
+            this.Controls.Add(this.franjaAgua);
+            this.Controls.Add(this.franjaTierra);
+            this.Controls.Add(this.franjaAire);
+            this.Controls.Add(this.lblSubtitulo);
+            this.Controls.Add(this.lblTriangulo);
+            this.Controls.Add(this.lblEtiquetaNombre);
+            this.Controls.Add(this.txtJugador);
+            this.Controls.Add(this.btnJugar);
+            this.Controls.Add(this.btnLan);
+            this.Controls.Add(this.btnStats);
+            this.Controls.Add(this.btnCodice);
+            this.Controls.Add(this.btnRanking);
+            this.Controls.Add(this.btnSalir);
+            this.Controls.Add(this.lblNota);
+            this.Controls.Add(this.btnEspanol);
+            this.Controls.Add(this.btnIngles);
+            this.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.Name = "FrmMenu";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Arena Elemental";
+            this.ResumeLayout(false);
+            this.PerformLayout();
         }
 
+        // Los dos botones de idioma cambian el idioma y vuelven a escribir los textos del menú.
         private void BtnEspanol_Click(object sender, EventArgs e)
         {
             Idioma.Actual = Idioma.Espanol;
@@ -436,7 +620,7 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        // Elige 3 personajes distintos al azar para el equipo de la CPU.
+        // Elige 5 personajes distintos al azar para el equipo de la CPU.
         private List<Personaje> SortearRival()
         {
             List<Personaje> disponibles = new List<Personaje>(CatalogoBase.Personajes);

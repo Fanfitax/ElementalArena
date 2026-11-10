@@ -72,14 +72,30 @@
     <Compile Include="Formularios\Sonidos.cs" />
     <Compile Include="Formularios\AvisoEvento.cs" />
     <Compile Include="Formularios\EfectosCombate.cs" />
-    <Compile Include="Formularios\FrmMenu.cs" />
-    <Compile Include="Formularios\FrmSeleccionEquipo.cs" />
-    <Compile Include="Formularios\FrmCombate.cs" />
-    <Compile Include="Formularios\FrmEstadisticas.cs" />
-    <Compile Include="Formularios\FrmRanking.cs" />
-    <Compile Include="Formularios\FrmCodice.cs" />
-    <Compile Include="Formularios\FrmLan.cs" />
-    <Compile Include="Formularios\FrmEsperaLan.cs" />
+    <Compile Include="Formularios\FrmMenu.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmSeleccionEquipo.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmCombate.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmEstadisticas.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmRanking.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmCodice.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmLan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Formularios\FrmEsperaLan.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.Targets" />
 </Project>

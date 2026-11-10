@@ -6,7 +6,7 @@ using ArenaElemental.Modelos;
 namespace ArenaElemental.Motor
 {
     // Lo que cada jugador le anuncia al otro antes de empezar una partida LAN:
-    // el nombre de su equipo y sus 3 personajes (como posiciones de la lista de CatalogoBase).
+    // el nombre de su equipo y sus 5 personajes (como posiciones de la lista de CatalogoBase).
     // El anfitrión además envía el escenario y la semilla del azar.
     //
     // Se manda como una línea de texto:  CONFIG|nombre|1,4,7|escenario|semilla
@@ -49,7 +49,7 @@ namespace ArenaElemental.Motor
             ConfigPartida config = new ConfigPartida();
             config.NombreEquipo = partes[1].Trim();
 
-            // Los 3 personajes
+            // Los 5 personajes
             string[] ids = partes[2].Split(',');
             if (ids.Length != EquipoCombate.TamanoEquipo) return null;
             foreach (string id in ids)

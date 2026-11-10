@@ -31,7 +31,7 @@ namespace ArenaElemental.Formularios
         // para que la imagen del escenario se vea entre ellas: bancas a los lados, las dos cartas del campo,
         // los botones en el centro y el registro abajo a la izquierda. Abajo a la derecha queda libre.
         private const int AnchoVentana = 1120;
-        private const int AltoVentana = 560;
+        private const int AltoVentana = 600;
         private const int YTitulos = 46;
         private const int YCampo = 74;
         private const int XBancaJugador = 14;
@@ -71,10 +71,32 @@ namespace ArenaElemental.Formularios
         private VistaCarta[] bancaJugador = new VistaCarta[EquipoCombate.TamanoEquipo - 1];
         private VistaCarta[] bancaRival = new VistaCarta[EquipoCombate.TamanoEquipo - 1];
 
-        private Label lblTitulo, lblTurno, lblInstruccion, lblTerremoto, lblUltimaJugada;
-        private Label lblBancaJugador, lblBancaRival, lblEquipoJugador, lblEquipoRival;
-        private Button btnAtacar, btnHabAtaque, btnHabUtilidad, btnRelevo, btnPasar, btnRendirse, btnReglas;
+        // Los controles fijos se declaran como campos para que el diseñador de SharpDevelop los reconozca.
+        private Panel barraSuperior;
+        private Label lblTitulo;
+        private Label lblTriangulo;
+        private Button btnReglas;
+        private Button btnRendirse;
+        private Label lblEquipoJugador;
+        private Label lblEquipoRival;
+        private Label lblBancaJugador;
+        private Label lblBancaRival;
+        private FlowLayoutPanel flujoBancaJugador;
+        private FlowLayoutPanel flujoBancaRival;
+        private Label lblTurno;
+        private Label lblInstruccion;
+        private Button btnAtacar;
+        private Button btnHabAtaque;
+        private Button btnHabUtilidad;
+        private Button btnRelevo;
+        private Button btnPasar;
+        private Label lblTerremoto;
+        private Label lblVs;
+        private Panel panelRegistro;
+        private Label lblRegistro;
         private ListBox lstHistorial;
+        private Label lblUltima;
+        private Label lblUltimaJugada;
         private ContextMenuStrip menuAliados;
         private int numeroHabilidadPendiente;   // la habilidad que espera que se elija a qué aliado curar
         private ToolTip ayuda = new ToolTip();
@@ -197,19 +219,43 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        // ---------- Construcción de la interfaz (todo por código) ----------
+        // ---------- Construcción de la interfaz ----------
 
+        // Los controles fijos están en InitializeComponent; aquí solo se pone lo que depende del idioma
+        // o de los datos del combate (las cartas, el fondo del escenario).
         private void ConstruirInterfaz()
         {
-            Estilo.AplicarFormulario(this, Idioma.Texto("Arena Elemental - Combate", "Arena Elemental - Battle"), AnchoVentana, AltoVentana);
-            BackColor = Color.FromArgb(12, 18, 28);
+            InitializeComponent();
+
+            Text = Idioma.Texto("Arena Elemental - Combate", "Arena Elemental - Battle");
+            lblTriangulo.Text = Idioma.Texto("Triángulo: ", "Triangle: ") + Estilo.Triangulo;
+            Estilo.EstilizarBoton(btnReglas, Idioma.Texto("Reglas", "Rules"), Color.FromArgb(60, 70, 110));
+            btnReglas.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            Estilo.EstilizarBoton(btnRendirse, Idioma.Texto("Rendirse", "Give up"), Color.FromArgb(130, 30, 40));
+            btnRendirse.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+
+            // Los botones de acción: color propio, letra de 9 y el texto lo pone Refrescar().
+            Estilo.EstilizarBoton(btnAtacar, string.Empty, Color.Crimson);
+            btnAtacar.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            Estilo.EstilizarBoton(btnHabAtaque, string.Empty, Color.FromArgb(88, 40, 140));
+            btnHabAtaque.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            Estilo.EstilizarBoton(btnHabUtilidad, string.Empty, Color.FromArgb(16, 122, 104));
+            btnHabUtilidad.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            Estilo.EstilizarBoton(btnRelevo, string.Empty, Color.FromArgb(24, 110, 160));
+            btnRelevo.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            Estilo.EstilizarBoton(btnPasar, string.Empty, Color.FromArgb(70, 78, 100));
+            btnPasar.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            menuAliados = new ContextMenuStrip();
+
+            lblRegistro.Text = Idioma.Texto("REGISTRO (pila)", "LOG (stack)");
+            lblUltima.Text = Idioma.Texto("Última jugada (Peek):", "Last move (Peek):");
+            Estilo.Redondear(panelRegistro, 12);
+            Estilo.Redondear(flujoBancaJugador, 12);
+            Estilo.Redondear(flujoBancaRival, 12);
+
             CargarFondoDelEscenario();
-
-            ConstruirBarraSuperior();
-            ConstruirCampoDeDuelo();
-            ConstruirPanelRegistro();
+            ConstruirCartas();
         }
-
         // ---------- Fondo según el escenario ----------
 
         // Pone como fondo la imagen que corresponde al elemento del escenario elegido:
@@ -270,44 +316,10 @@ namespace ArenaElemental.Formularios
             return tablero;
         }
 
-        // Franja oscura de arriba con el escenario, la ronda, el recordatorio del triángulo y los botones Reglas y Rendirse.
-        private void ConstruirBarraSuperior()
+        // Las cartas son controles propios que se llenan con los datos de los personajes, así que se crean por código.
+        // Las bancas (FlowLayoutPanel) ya están en InitializeComponent: aquí solo se les agregan las cartas pequeñas.
+        private void ConstruirCartas()
         {
-            Panel barra = new Panel();
-            barra.SetBounds(0, 0, AnchoVentana, 36);
-            barra.BackColor = Color.FromArgb(185, 10, 10, 14);
-            Controls.Add(barra);
-
-            lblTitulo = Estilo.CrearEtiqueta(string.Empty, 16, 4, 420, 28, 14f, true);
-            lblTitulo.ForeColor = Color.Gold;
-            barra.Controls.Add(lblTitulo);
-
-            Label lblTriangulo = Estilo.CrearEtiqueta(Idioma.Texto("Triángulo: ", "Triangle: ") + Estilo.Triangulo, 440, 2, 470, 32, 9f, false);
-            lblTriangulo.TextAlign = ContentAlignment.MiddleRight;
-            barra.Controls.Add(lblTriangulo);
-
-            btnReglas = new Button();
-            btnReglas.SetBounds(AnchoVentana - 14 - 90 - 8 - 84, 5, 84, 26);
-            Estilo.EstilizarBoton(btnReglas, Idioma.Texto("Reglas", "Rules"), Color.FromArgb(60, 70, 110));
-            btnReglas.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            btnReglas.Click += BtnReglas_Click;
-            barra.Controls.Add(btnReglas);
-
-            btnRendirse = new Button();
-            btnRendirse.SetBounds(AnchoVentana - 14 - 90, 5, 90, 26);
-            Estilo.EstilizarBoton(btnRendirse, Idioma.Texto("Rendirse", "Give up"), Color.FromArgb(130, 30, 40));
-            btnRendirse.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            btnRendirse.Click += BtnRendirse_Click;
-            barra.Controls.Add(btnRendirse);
-        }
-
-        // Las dos cartas del campo, las dos bancas y la zona central con los botones.
-        private void ConstruirCampoDeDuelo()
-        {
-            // Nombres de los equipos sobre sus cartas.
-            lblEquipoJugador = CrearTitulo(string.Empty, XCartaJugador, 216);
-            lblEquipoRival = CrearTitulo(string.Empty, XCartaRival, 216);
-
             cartaJugador = new VistaCarta(TamanoCarta.Mediana);
             cartaJugador.Location = new Point(XCartaJugador, YCampo);
             Controls.Add(cartaJugador);
@@ -316,112 +328,14 @@ namespace ArenaElemental.Formularios
             cartaRival.Location = new Point(XCartaRival, YCampo);
             Controls.Add(cartaRival);
 
-            // Bancas: mi banca a la izquierda, la del rival a la derecha. Cada una es una mano de cartas en línea
-            // y la carta que entra primero queda siempre pegada a la carta del campo (la mía fluye de derecha a
-            // izquierda y la del rival de izquierda a derecha).
-            lblBancaJugador = CrearTitulo(string.Empty, XBancaJugador, AnchoBanca);
-            CrearBanca(XBancaJugador, bancaJugador, FlowDirection.RightToLeft);
-            lblBancaRival = CrearTitulo(string.Empty, XBancaRival, AnchoBanca);
-            CrearBanca(XBancaRival, bancaRival, FlowDirection.LeftToRight);
-
-            // Zona central entre las dos cartas.
-            lblTurno = Estilo.CrearEtiqueta(string.Empty, XCentro, YCampo, AnchoCentro, 40, 14f, true);
-            lblTurno.BackColor = PanelOscuroTranslucido;
-            lblTurno.TextAlign = ContentAlignment.MiddleCenter;
-            Controls.Add(lblTurno);
-
-            lblInstruccion = Estilo.CrearEtiqueta(string.Empty, XCentro, YCampo + 44, AnchoCentro, 32, 9f, false);
-            lblInstruccion.BackColor = PanelOscuroTranslucido;
-            lblInstruccion.TextAlign = ContentAlignment.MiddleCenter;
-            Controls.Add(lblInstruccion);
-
-            btnAtacar = CrearBotonAccion(YCampo + 82, Color.Crimson);
-            btnAtacar.Click += BtnAtacar_Click;
-
-            menuAliados = new ContextMenuStrip();
-            btnHabAtaque = CrearBotonAccion(YCampo + 126, Color.FromArgb(88, 40, 140));
-            btnHabAtaque.Click += BtnHabAtaque_Click;
-
-            btnHabUtilidad = CrearBotonAccion(YCampo + 170, Color.FromArgb(16, 122, 104));
-            btnHabUtilidad.Click += BtnHabUtilidad_Click;
-
-            btnRelevo = CrearBotonAccion(YCampo + 214, Color.FromArgb(24, 110, 160));
-            btnRelevo.Click += BtnRelevo_Click;
-
-            btnPasar = CrearBotonAccion(YCampo + 258, Color.FromArgb(70, 78, 100));
-            btnPasar.Click += BtnPasar_Click;
-
-            lblTerremoto = Estilo.CrearEtiqueta(string.Empty, XCentro, YCampo + 304, AnchoCentro, 24, 9f, true);
-            lblTerremoto.BackColor = PanelOscuroTranslucido;
-            lblTerremoto.TextAlign = ContentAlignment.MiddleCenter;
-            Controls.Add(lblTerremoto);
-
-            Label vs = Estilo.CrearEtiqueta("VS", XCentro, YCampo + 336, AnchoCentro, 56, 28f, true);
-            vs.ForeColor = Color.Gold;
-            vs.TextAlign = ContentAlignment.MiddleCenter;
-            Controls.Add(vs);
+            // El orden de las cartas de la banca es el de la cola; la dirección del flujo de cada panel decide
+            // de qué lado empieza la fila: la carta que entra primero queda siempre pegada a la carta del campo.
+            LlenarBanca(flujoBancaJugador, bancaJugador);
+            LlenarBanca(flujoBancaRival, bancaRival);
         }
 
-        // El historial (pila) con estilo de registro de combate. Es un panel pequeño y translúcido
-        // debajo de la banca del jugador; el resto de esa zona queda libre para que se vea el escenario.
-        private void ConstruirPanelRegistro()
+        private void LlenarBanca(FlowLayoutPanel flujo, VistaCarta[] cartas)
         {
-            Panel panel = new Panel();
-            panel.SetBounds(XBancaJugador, 296, AnchoBanca, 244);
-            panel.BackColor = PanelBancaTranslucido;
-            Controls.Add(panel);
-            Estilo.Redondear(panel, 12);
-
-            Label titulo = Estilo.CrearEtiqueta(Idioma.Texto("REGISTRO (pila)", "LOG (stack)"), 10, 6, AnchoBanca - 20, 20, 9f, true);
-            titulo.ForeColor = Color.Gold;
-            panel.Controls.Add(titulo);
-
-            lstHistorial = new ListBox();
-            lstHistorial.SetBounds(8, 30, AnchoBanca - 16, 136);
-            lstHistorial.BackColor = Color.FromArgb(6, 6, 9);
-            lstHistorial.ForeColor = Color.White;
-            lstHistorial.BorderStyle = BorderStyle.None;
-            lstHistorial.Font = new Font("Consolas", 8.5f);
-            lstHistorial.SelectionMode = SelectionMode.None;
-            lstHistorial.DrawMode = DrawMode.OwnerDrawVariable;
-            lstHistorial.MeasureItem += Historial_MeasureItem;
-            lstHistorial.DrawItem += Historial_DrawItem;
-            panel.Controls.Add(lstHistorial);
-
-            Label ultima = Estilo.CrearEtiqueta(Idioma.Texto("Última jugada (Peek):", "Last move (Peek):"), 10, 172, AnchoBanca - 20, 18, 8f, true);
-            ultima.ForeColor = Color.Gold;
-            panel.Controls.Add(ultima);
-
-            lblUltimaJugada = Estilo.CrearEtiqueta(string.Empty, 10, 190, AnchoBanca - 20, 48, 8f, false);
-            lblUltimaJugada.ForeColor = Color.White;
-            panel.Controls.Add(lblUltimaJugada);
-        }
-
-        private Label CrearTitulo(string texto, int x, int ancho)
-        {
-            Label l = Estilo.CrearEtiqueta(texto, x, YTitulos, ancho, 22, 10f, true);
-            l.ForeColor = Color.Gold;
-            l.BackColor = PanelOscuroTranslucido;
-            l.TextAlign = ContentAlignment.MiddleLeft;
-            Controls.Add(l);
-            return l;
-        }
-
-        // Crea la "mano" de la banca: un FlowLayoutPanel translúcido con las cartas pequeñas en una sola fila.
-        // El orden de las cartas es el de la cola; la dirección del flujo decide de qué lado empieza la fila.
-        private void CrearBanca(int x, VistaCarta[] cartas, FlowDirection direccion)
-        {
-            FlowLayoutPanel flujo = new FlowLayoutPanel();
-            flujo.SetBounds(x, YCampo, AnchoBanca, 210);
-            flujo.FlowDirection = direccion;
-            flujo.WrapContents = false;
-            flujo.AutoScroll = false;
-            flujo.BackColor = PanelBancaTranslucido;
-            flujo.ForeColor = Color.White;
-            flujo.Padding = new Padding(3, 3, 3, 3);
-            Controls.Add(flujo);
-            Estilo.Redondear(flujo, 12);
-
             for (int i = 0; i < cartas.Length; i++)
             {
                 cartas[i] = new VistaCarta(TamanoCarta.Pequena);
@@ -430,16 +344,368 @@ namespace ArenaElemental.Formularios
             }
         }
 
-        private Button CrearBotonAccion(int y, Color color)
+        // Código del diseñador: aquí se crean y se colocan los controles fijos de la ventana.
+        private void InitializeComponent()
         {
-            Button b = new Button();
-            b.SetBounds(XCentro, y, AnchoCentro, 40);
-            Estilo.EstilizarBoton(b, string.Empty, color);
-            b.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
-            Controls.Add(b);
-            return b;
+            this.barraSuperior = new System.Windows.Forms.Panel();
+            this.lblTitulo = new System.Windows.Forms.Label();
+            this.lblTriangulo = new System.Windows.Forms.Label();
+            this.btnReglas = new System.Windows.Forms.Button();
+            this.btnRendirse = new System.Windows.Forms.Button();
+            this.lblEquipoJugador = new System.Windows.Forms.Label();
+            this.lblEquipoRival = new System.Windows.Forms.Label();
+            this.lblBancaJugador = new System.Windows.Forms.Label();
+            this.lblBancaRival = new System.Windows.Forms.Label();
+            this.flujoBancaJugador = new System.Windows.Forms.FlowLayoutPanel();
+            this.flujoBancaRival = new System.Windows.Forms.FlowLayoutPanel();
+            this.lblTurno = new System.Windows.Forms.Label();
+            this.lblInstruccion = new System.Windows.Forms.Label();
+            this.btnAtacar = new System.Windows.Forms.Button();
+            this.btnHabAtaque = new System.Windows.Forms.Button();
+            this.btnHabUtilidad = new System.Windows.Forms.Button();
+            this.btnRelevo = new System.Windows.Forms.Button();
+            this.btnPasar = new System.Windows.Forms.Button();
+            this.lblTerremoto = new System.Windows.Forms.Label();
+            this.lblVs = new System.Windows.Forms.Label();
+            this.panelRegistro = new System.Windows.Forms.Panel();
+            this.lblRegistro = new System.Windows.Forms.Label();
+            this.lstHistorial = new System.Windows.Forms.ListBox();
+            this.lblUltima = new System.Windows.Forms.Label();
+            this.lblUltimaJugada = new System.Windows.Forms.Label();
+            this.barraSuperior.SuspendLayout();
+            this.panelRegistro.SuspendLayout();
+            this.SuspendLayout();
+            //
+            // barraSuperior
+            //
+            this.barraSuperior.BackColor = System.Drawing.Color.FromArgb(185, 10, 10, 14);
+            this.barraSuperior.Controls.Add(this.lblTitulo);
+            this.barraSuperior.Controls.Add(this.lblTriangulo);
+            this.barraSuperior.Controls.Add(this.btnReglas);
+            this.barraSuperior.Controls.Add(this.btnRendirse);
+            this.barraSuperior.Location = new System.Drawing.Point(0, 0);
+            this.barraSuperior.Name = "barraSuperior";
+            this.barraSuperior.Size = new System.Drawing.Size(1120, 36);
+            this.barraSuperior.TabIndex = 0;
+            //
+            // lblTitulo
+            //
+            this.lblTitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
+            this.lblTitulo.ForeColor = System.Drawing.Color.Gold;
+            this.lblTitulo.Location = new System.Drawing.Point(16, 4);
+            this.lblTitulo.Name = "lblTitulo";
+            this.lblTitulo.Size = new System.Drawing.Size(420, 28);
+            this.lblTitulo.TabIndex = 0;
+            //
+            // lblTriangulo
+            //
+            this.lblTriangulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblTriangulo.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblTriangulo.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblTriangulo.Location = new System.Drawing.Point(440, 2);
+            this.lblTriangulo.Name = "lblTriangulo";
+            this.lblTriangulo.Size = new System.Drawing.Size(470, 32);
+            this.lblTriangulo.TabIndex = 1;
+            this.lblTriangulo.Text = "Triángulo: ";
+            this.lblTriangulo.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            //
+            // btnReglas
+            //
+            this.btnReglas.BackColor = System.Drawing.Color.FromArgb(60, 70, 110);
+            this.btnReglas.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnReglas.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnReglas.ForeColor = System.Drawing.Color.White;
+            this.btnReglas.Location = new System.Drawing.Point(924, 5);
+            this.btnReglas.Name = "btnReglas";
+            this.btnReglas.Size = new System.Drawing.Size(84, 26);
+            this.btnReglas.TabIndex = 2;
+            this.btnReglas.Text = "Reglas";
+            this.btnReglas.UseVisualStyleBackColor = false;
+            this.btnReglas.Click += new System.EventHandler(this.BtnReglas_Click);
+            //
+            // btnRendirse
+            //
+            this.btnRendirse.BackColor = System.Drawing.Color.FromArgb(130, 30, 40);
+            this.btnRendirse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRendirse.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnRendirse.ForeColor = System.Drawing.Color.White;
+            this.btnRendirse.Location = new System.Drawing.Point(1016, 5);
+            this.btnRendirse.Name = "btnRendirse";
+            this.btnRendirse.Size = new System.Drawing.Size(90, 26);
+            this.btnRendirse.TabIndex = 3;
+            this.btnRendirse.Text = "Rendirse";
+            this.btnRendirse.UseVisualStyleBackColor = false;
+            this.btnRendirse.Click += new System.EventHandler(this.BtnRendirse_Click);
+            //
+            // lblEquipoJugador
+            //
+            this.lblEquipoJugador.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblEquipoJugador.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblEquipoJugador.ForeColor = System.Drawing.Color.Gold;
+            this.lblEquipoJugador.Location = new System.Drawing.Point(222, 46);
+            this.lblEquipoJugador.Name = "lblEquipoJugador";
+            this.lblEquipoJugador.Size = new System.Drawing.Size(216, 22);
+            this.lblEquipoJugador.TabIndex = 1;
+            this.lblEquipoJugador.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            //
+            // lblEquipoRival
+            //
+            this.lblEquipoRival.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblEquipoRival.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblEquipoRival.ForeColor = System.Drawing.Color.Gold;
+            this.lblEquipoRival.Location = new System.Drawing.Point(682, 46);
+            this.lblEquipoRival.Name = "lblEquipoRival";
+            this.lblEquipoRival.Size = new System.Drawing.Size(216, 22);
+            this.lblEquipoRival.TabIndex = 2;
+            this.lblEquipoRival.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            //
+            // lblBancaJugador
+            //
+            this.lblBancaJugador.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblBancaJugador.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblBancaJugador.ForeColor = System.Drawing.Color.Gold;
+            this.lblBancaJugador.Location = new System.Drawing.Point(14, 46);
+            this.lblBancaJugador.Name = "lblBancaJugador";
+            this.lblBancaJugador.Size = new System.Drawing.Size(198, 22);
+            this.lblBancaJugador.TabIndex = 3;
+            this.lblBancaJugador.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            //
+            // lblBancaRival
+            //
+            this.lblBancaRival.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblBancaRival.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblBancaRival.ForeColor = System.Drawing.Color.Gold;
+            this.lblBancaRival.Location = new System.Drawing.Point(908, 46);
+            this.lblBancaRival.Name = "lblBancaRival";
+            this.lblBancaRival.Size = new System.Drawing.Size(198, 22);
+            this.lblBancaRival.TabIndex = 4;
+            this.lblBancaRival.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            //
+            // flujoBancaJugador
+            //
+            this.flujoBancaJugador.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.flujoBancaJugador.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+            this.flujoBancaJugador.ForeColor = System.Drawing.Color.White;
+            this.flujoBancaJugador.Location = new System.Drawing.Point(14, 74);
+            this.flujoBancaJugador.Name = "flujoBancaJugador";
+            this.flujoBancaJugador.Padding = new System.Windows.Forms.Padding(3);
+            this.flujoBancaJugador.Size = new System.Drawing.Size(198, 300);
+            this.flujoBancaJugador.TabIndex = 5;
+            //
+            // flujoBancaRival
+            //
+            this.flujoBancaRival.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.flujoBancaRival.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flujoBancaRival.ForeColor = System.Drawing.Color.White;
+            this.flujoBancaRival.Location = new System.Drawing.Point(908, 74);
+            this.flujoBancaRival.Name = "flujoBancaRival";
+            this.flujoBancaRival.Padding = new System.Windows.Forms.Padding(3);
+            this.flujoBancaRival.Size = new System.Drawing.Size(198, 300);
+            this.flujoBancaRival.TabIndex = 6;
+            //
+            // lblTurno
+            //
+            this.lblTurno.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblTurno.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
+            this.lblTurno.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblTurno.Location = new System.Drawing.Point(470, 74);
+            this.lblTurno.Name = "lblTurno";
+            this.lblTurno.Size = new System.Drawing.Size(180, 40);
+            this.lblTurno.TabIndex = 7;
+            this.lblTurno.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            //
+            // lblInstruccion
+            //
+            this.lblInstruccion.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblInstruccion.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblInstruccion.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblInstruccion.Location = new System.Drawing.Point(470, 118);
+            this.lblInstruccion.Name = "lblInstruccion";
+            this.lblInstruccion.Size = new System.Drawing.Size(180, 32);
+            this.lblInstruccion.TabIndex = 8;
+            this.lblInstruccion.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            //
+            // btnAtacar
+            //
+            this.btnAtacar.BackColor = System.Drawing.Color.Crimson;
+            this.btnAtacar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnAtacar.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnAtacar.ForeColor = System.Drawing.Color.White;
+            this.btnAtacar.Location = new System.Drawing.Point(470, 156);
+            this.btnAtacar.Name = "btnAtacar";
+            this.btnAtacar.Size = new System.Drawing.Size(180, 40);
+            this.btnAtacar.TabIndex = 9;
+            this.btnAtacar.UseVisualStyleBackColor = false;
+            this.btnAtacar.Click += new System.EventHandler(this.BtnAtacar_Click);
+            //
+            // btnHabAtaque
+            //
+            this.btnHabAtaque.BackColor = System.Drawing.Color.FromArgb(88, 40, 140);
+            this.btnHabAtaque.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnHabAtaque.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnHabAtaque.ForeColor = System.Drawing.Color.White;
+            this.btnHabAtaque.Location = new System.Drawing.Point(470, 200);
+            this.btnHabAtaque.Name = "btnHabAtaque";
+            this.btnHabAtaque.Size = new System.Drawing.Size(180, 40);
+            this.btnHabAtaque.TabIndex = 10;
+            this.btnHabAtaque.UseVisualStyleBackColor = false;
+            this.btnHabAtaque.Click += new System.EventHandler(this.BtnHabAtaque_Click);
+            //
+            // btnHabUtilidad
+            //
+            this.btnHabUtilidad.BackColor = System.Drawing.Color.FromArgb(16, 122, 104);
+            this.btnHabUtilidad.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnHabUtilidad.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnHabUtilidad.ForeColor = System.Drawing.Color.White;
+            this.btnHabUtilidad.Location = new System.Drawing.Point(470, 244);
+            this.btnHabUtilidad.Name = "btnHabUtilidad";
+            this.btnHabUtilidad.Size = new System.Drawing.Size(180, 40);
+            this.btnHabUtilidad.TabIndex = 11;
+            this.btnHabUtilidad.UseVisualStyleBackColor = false;
+            this.btnHabUtilidad.Click += new System.EventHandler(this.BtnHabUtilidad_Click);
+            //
+            // btnRelevo
+            //
+            this.btnRelevo.BackColor = System.Drawing.Color.FromArgb(24, 110, 160);
+            this.btnRelevo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRelevo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnRelevo.ForeColor = System.Drawing.Color.White;
+            this.btnRelevo.Location = new System.Drawing.Point(470, 288);
+            this.btnRelevo.Name = "btnRelevo";
+            this.btnRelevo.Size = new System.Drawing.Size(180, 40);
+            this.btnRelevo.TabIndex = 12;
+            this.btnRelevo.UseVisualStyleBackColor = false;
+            this.btnRelevo.Click += new System.EventHandler(this.BtnRelevo_Click);
+            //
+            // btnPasar
+            //
+            this.btnPasar.BackColor = System.Drawing.Color.FromArgb(70, 78, 100);
+            this.btnPasar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnPasar.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnPasar.ForeColor = System.Drawing.Color.White;
+            this.btnPasar.Location = new System.Drawing.Point(470, 332);
+            this.btnPasar.Name = "btnPasar";
+            this.btnPasar.Size = new System.Drawing.Size(180, 40);
+            this.btnPasar.TabIndex = 13;
+            this.btnPasar.UseVisualStyleBackColor = false;
+            this.btnPasar.Click += new System.EventHandler(this.BtnPasar_Click);
+            //
+            // lblTerremoto
+            //
+            this.lblTerremoto.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.lblTerremoto.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblTerremoto.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.lblTerremoto.Location = new System.Drawing.Point(470, 378);
+            this.lblTerremoto.Name = "lblTerremoto";
+            this.lblTerremoto.Size = new System.Drawing.Size(180, 24);
+            this.lblTerremoto.TabIndex = 14;
+            this.lblTerremoto.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            //
+            // lblVs
+            //
+            this.lblVs.BackColor = System.Drawing.Color.Transparent;
+            this.lblVs.Font = new System.Drawing.Font("Segoe UI", 28F, System.Drawing.FontStyle.Bold);
+            this.lblVs.ForeColor = System.Drawing.Color.Gold;
+            this.lblVs.Location = new System.Drawing.Point(470, 410);
+            this.lblVs.Name = "lblVs";
+            this.lblVs.Size = new System.Drawing.Size(180, 56);
+            this.lblVs.TabIndex = 15;
+            this.lblVs.Text = "VS";
+            this.lblVs.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            //
+            // panelRegistro
+            //
+            this.panelRegistro.BackColor = System.Drawing.Color.FromArgb(150, 8, 8, 12);
+            this.panelRegistro.Controls.Add(this.lblRegistro);
+            this.panelRegistro.Controls.Add(this.lstHistorial);
+            this.panelRegistro.Controls.Add(this.lblUltima);
+            this.panelRegistro.Controls.Add(this.lblUltimaJugada);
+            this.panelRegistro.Location = new System.Drawing.Point(14, 382);
+            this.panelRegistro.Name = "panelRegistro";
+            this.panelRegistro.Size = new System.Drawing.Size(198, 208);
+            this.panelRegistro.TabIndex = 16;
+            //
+            // lblRegistro
+            //
+            this.lblRegistro.BackColor = System.Drawing.Color.Transparent;
+            this.lblRegistro.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblRegistro.ForeColor = System.Drawing.Color.Gold;
+            this.lblRegistro.Location = new System.Drawing.Point(10, 6);
+            this.lblRegistro.Name = "lblRegistro";
+            this.lblRegistro.Size = new System.Drawing.Size(178, 20);
+            this.lblRegistro.TabIndex = 0;
+            this.lblRegistro.Text = "REGISTRO (pila)";
+            //
+            // lstHistorial
+            //
+            this.lstHistorial.BackColor = System.Drawing.Color.FromArgb(6, 6, 9);
+            this.lstHistorial.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.lstHistorial.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawVariable;
+            this.lstHistorial.Font = new System.Drawing.Font("Consolas", 8.5F);
+            this.lstHistorial.ForeColor = System.Drawing.Color.White;
+            this.lstHistorial.FormattingEnabled = true;
+            this.lstHistorial.Location = new System.Drawing.Point(8, 28);
+            this.lstHistorial.Name = "lstHistorial";
+            this.lstHistorial.SelectionMode = System.Windows.Forms.SelectionMode.None;
+            this.lstHistorial.Size = new System.Drawing.Size(182, 112);
+            this.lstHistorial.TabIndex = 1;
+            this.lstHistorial.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.Historial_DrawItem);
+            this.lstHistorial.MeasureItem += new System.Windows.Forms.MeasureItemEventHandler(this.Historial_MeasureItem);
+            //
+            // lblUltima
+            //
+            this.lblUltima.BackColor = System.Drawing.Color.Transparent;
+            this.lblUltima.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this.lblUltima.ForeColor = System.Drawing.Color.Gold;
+            this.lblUltima.Location = new System.Drawing.Point(10, 146);
+            this.lblUltima.Name = "lblUltima";
+            this.lblUltima.Size = new System.Drawing.Size(178, 18);
+            this.lblUltima.TabIndex = 2;
+            this.lblUltima.Text = "Última jugada (Peek):";
+            //
+            // lblUltimaJugada
+            //
+            this.lblUltimaJugada.BackColor = System.Drawing.Color.Transparent;
+            this.lblUltimaJugada.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this.lblUltimaJugada.ForeColor = System.Drawing.Color.White;
+            this.lblUltimaJugada.Location = new System.Drawing.Point(10, 164);
+            this.lblUltimaJugada.Name = "lblUltimaJugada";
+            this.lblUltimaJugada.Size = new System.Drawing.Size(178, 38);
+            this.lblUltimaJugada.TabIndex = 3;
+            //
+            // FrmCombate
+            //
+            this.BackColor = System.Drawing.Color.FromArgb(12, 18, 28);
+            this.ClientSize = new System.Drawing.Size(1120, 600);
+            this.Controls.Add(this.barraSuperior);
+            this.Controls.Add(this.lblEquipoJugador);
+            this.Controls.Add(this.lblEquipoRival);
+            this.Controls.Add(this.lblBancaJugador);
+            this.Controls.Add(this.lblBancaRival);
+            this.Controls.Add(this.flujoBancaJugador);
+            this.Controls.Add(this.flujoBancaRival);
+            this.Controls.Add(this.lblTurno);
+            this.Controls.Add(this.lblInstruccion);
+            this.Controls.Add(this.btnAtacar);
+            this.Controls.Add(this.btnHabAtaque);
+            this.Controls.Add(this.btnHabUtilidad);
+            this.Controls.Add(this.btnRelevo);
+            this.Controls.Add(this.btnPasar);
+            this.Controls.Add(this.lblTerremoto);
+            this.Controls.Add(this.lblVs);
+            this.Controls.Add(this.panelRegistro);
+            this.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.Name = "FrmCombate";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Arena Elemental - Combate";
+            this.barraSuperior.ResumeLayout(false);
+            this.panelRegistro.ResumeLayout(false);
+            this.ResumeLayout(false);
         }
-
         // El resumen de las reglas que antes ocupaba dos paneles fijos: ahora aparece solo cuando se pide.
         private void BtnReglas_Click(object sender, EventArgs e)
         {

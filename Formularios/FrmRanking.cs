@@ -19,22 +19,24 @@ namespace ArenaElemental.Formularios
         private Font fuenteNegrita = new Font("Segoe UI", 10f, FontStyle.Bold);
         private DataGridView tabla;
 
+        // Los controles se declaran como campos para que el diseñador de SharpDevelop los reconozca.
+        private Label lblTitulo;
+        private Label lblSubtitulo;
+        private Panel panelTabla;
+        private Button btnCerrar;
+
         public FrmRanking(string nombreJugador)
         {
             this.nombreJugador = nombreJugador;
-            Estilo.AplicarFormulario(this, "Arena Elemental - Ranking", 924, 600);
+
+            InitializeComponent();
+
+            // Lo que cambia según el idioma (el diseñador solo muestra la versión en español).
+            lblSubtitulo.Text = Idioma.Texto("Puntos: victoria = ", "Points: win = ") + PuestoRanking.PuntosPorVictoria + Idioma.Texto("  ·  derrota = ", "  ·  loss = ") + PuestoRanking.PuntosPorDerrota + Idioma.Texto("  ·  abandono = 0", "  ·  forfeit = 0");
+            Estilo.EstilizarBoton(btnCerrar, Idioma.Texto("Cerrar", "Close"), Estilo.Acento);
+            Estilo.Redondear(panelTabla, 12);
 
             List<PuestoRanking> ranking = RegistroPartidas.ObtenerRanking();
-
-            Label titulo = Estilo.CrearEtiqueta("RANKING", 24, 12, 600, 38, 22f, true);
-            titulo.ForeColor = Color.Gold;
-            Controls.Add(titulo);
-
-            Label sub = Estilo.CrearEtiqueta(
-                Idioma.Texto("Puntos: victoria = ", "Points: win = ") + PuestoRanking.PuntosPorVictoria + Idioma.Texto("  ·  derrota = ", "  ·  loss = ") + PuestoRanking.PuntosPorDerrota + Idioma.Texto("  ·  abandono = 0", "  ·  forfeit = 0"),
-                26, 50, 700, 20, 10.5f, false);
-            sub.ForeColor = Estilo.TextoSuave;
-            Controls.Add(sub);
 
             // Podio: los tres primeros.
             Color[] colores = new Color[] { Oro, Plata, Bronce };
@@ -45,34 +47,92 @@ namespace ArenaElemental.Formularios
                 CrearTarjetaPodio(i, puesto, colores[i]);
             }
 
-            // Tabla completa.
-            Panel marco = new Panel();
-            marco.SetBounds(24, 190, 876, 330);
-            marco.BackColor = Color.FromArgb(205, 10, 12, 18);
-            Controls.Add(marco);
-            Estilo.Redondear(marco, 12);
-
+            // Tabla completa (se llena con datos, por eso se crea por código).
             DataGridView dgv = CrearTabla(ranking);
             tabla = dgv;
             dgv.SetBounds(8, 8, 860, 314);
-            marco.Controls.Add(dgv);
+            panelTabla.Controls.Add(dgv);
 
             if (ranking.Count == 0)
             {
                 Label vacio = Estilo.CrearEtiqueta(Idioma.Texto("Todavía no hay partidas. ¡Juega una y aparece en el ranking!", "There are no matches yet. Play one and appear in the ranking!"), 0, 150, 876, 30, 12f, true);
                 vacio.ForeColor = Estilo.TextoSuave;
                 vacio.TextAlign = ContentAlignment.MiddleCenter;
-                marco.Controls.Add(vacio);
+                panelTabla.Controls.Add(vacio);
                 vacio.BringToFront();
             }
-
-            Button cerrar = new Button();
-            cerrar.SetBounds(780, 540, 120, 40);
-            Estilo.EstilizarBoton(cerrar, Idioma.Texto("Cerrar", "Close"), Estilo.Acento);
-            cerrar.Click += Cerrar_Click;
-            Controls.Add(cerrar);
         }
 
+        // Código del diseñador: aquí se crean y se colocan los controles de la ventana.
+        private void InitializeComponent()
+        {
+            this.lblTitulo = new System.Windows.Forms.Label();
+            this.lblSubtitulo = new System.Windows.Forms.Label();
+            this.panelTabla = new System.Windows.Forms.Panel();
+            this.btnCerrar = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            //
+            // lblTitulo
+            //
+            this.lblTitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 22F, System.Drawing.FontStyle.Bold);
+            this.lblTitulo.ForeColor = System.Drawing.Color.Gold;
+            this.lblTitulo.Location = new System.Drawing.Point(24, 12);
+            this.lblTitulo.Name = "lblTitulo";
+            this.lblTitulo.Size = new System.Drawing.Size(600, 38);
+            this.lblTitulo.TabIndex = 0;
+            this.lblTitulo.Text = "RANKING";
+            //
+            // lblSubtitulo
+            //
+            this.lblSubtitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 10.5F);
+            this.lblSubtitulo.ForeColor = System.Drawing.Color.FromArgb(165, 170, 200);
+            this.lblSubtitulo.Location = new System.Drawing.Point(26, 50);
+            this.lblSubtitulo.Name = "lblSubtitulo";
+            this.lblSubtitulo.Size = new System.Drawing.Size(700, 20);
+            this.lblSubtitulo.TabIndex = 1;
+            this.lblSubtitulo.Text = "Puntos: victoria = 3  ·  derrota = 1  ·  abandono = 0";
+            //
+            // panelTabla
+            //
+            this.panelTabla.BackColor = System.Drawing.Color.FromArgb(205, 10, 12, 18);
+            this.panelTabla.Location = new System.Drawing.Point(24, 190);
+            this.panelTabla.Name = "panelTabla";
+            this.panelTabla.Size = new System.Drawing.Size(876, 330);
+            this.panelTabla.TabIndex = 2;
+            //
+            // btnCerrar
+            //
+            this.btnCerrar.BackColor = System.Drawing.Color.FromArgb(96, 120, 220);
+            this.btnCerrar.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCerrar.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnCerrar.ForeColor = System.Drawing.Color.White;
+            this.btnCerrar.Location = new System.Drawing.Point(780, 540);
+            this.btnCerrar.Name = "btnCerrar";
+            this.btnCerrar.Size = new System.Drawing.Size(120, 40);
+            this.btnCerrar.TabIndex = 3;
+            this.btnCerrar.Text = "Cerrar";
+            this.btnCerrar.UseVisualStyleBackColor = false;
+            this.btnCerrar.Click += new System.EventHandler(this.Cerrar_Click);
+            //
+            // FrmRanking
+            //
+            this.BackColor = System.Drawing.Color.FromArgb(24, 26, 40);
+            this.ClientSize = new System.Drawing.Size(924, 600);
+            this.Controls.Add(this.lblTitulo);
+            this.Controls.Add(this.lblSubtitulo);
+            this.Controls.Add(this.panelTabla);
+            this.Controls.Add(this.btnCerrar);
+            this.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.ForeColor = System.Drawing.Color.WhiteSmoke;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.Name = "FrmRanking";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Arena Elemental - Ranking";
+            this.ResumeLayout(false);
+        }
         private void Cerrar_Click(object sender, EventArgs e)
         {
             Close();

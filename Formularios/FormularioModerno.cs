@@ -40,7 +40,7 @@ namespace ArenaElemental.Formularios
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            if (!fondoModerno || BackgroundImage != null || ClientSize.Width <= 0 || ClientSize.Height <= 0)
+            if (DesignMode || !fondoModerno || BackgroundImage != null || ClientSize.Width <= 0 || ClientSize.Height <= 0)
             {
                 base.OnPaintBackground(e);
                 return;
